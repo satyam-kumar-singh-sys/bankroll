@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Bankroll — a poker session ledger. Track buy-ins, PnL, venues and ROI like a trading desk.">
+<title>♠ Bankroll — Poker PnL Ledger</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%235E6AD2' d='M12 3c-2.5 4.2-7 6.8-7 11a4.5 4.5 0 0 0 7.5 3.3c-.4 1.6-1.1 2.7-2.3 3.7h3.6c-1.2-1-1.9-2.1-2.3-3.7A4.5 4.5 0 0 0 19 14c0-4.2-4.5-6.8-7-11Z'/%3E%3C/svg%3E">
+<style>
+:root{
+  color-scheme: dark;
+  --bg:#08090D;
+  --panel:#0E1219;
+  --panel-2:#11161F;
+  --panel-3:#151B26;
+  --border:#1C2330;
+  --border-2:#26304180;
+  --text:#E6E9F0;
+  --muted:#8A93A6;
+  --faint:#5C6577;
+  --green:#2FBF8F;
+  --red:#F6465D;
+  --accent:#5E6AD2;
+  --accent-2:#7A86E8;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+::selection{background:rgba(94,106,210,.35)}
+html{scrollbar-color:#2A3342 transparent}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:var(--sans);font-size:13px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+}
+.bg-fx{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(900px 480px at 50% -180px, rgba(94,106,210,.14), transparent 65%),
+    radial-gradient(700px 420px at 88% -120px, rgba(47,191,143,.06), transparent 70%),
+    radial-gradient(700px 420px at 8% -140px, rgba(246,70,93,.05), transparent 70%);
+}
+.bg-fx::after{content:"";position:absolute;inset:0;
+  background-image:linear-gradient(rgba(255,255,255,.022) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.022) 1px,transparent 1px);
+  background-size:44px 44px;
+  mask-image:radial-gradient(ellipse 90% 60% at 50% 0%, #000 30%, transparent 75%);
+  -webkit-mask-image:radial-gradient(ellipse 90% 60% at 50% 0%, #000 30%, transparent 75%);
+}
+.wrap{position:relative;z-index:1;max-width:1140px;margin:0 auto;padding:0 20px 48px}
+
+/* ---------- header ---------- */
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 0 6px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:11px}
+.logo{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;
+  background:linear-gradient(145deg,#191F2D,#0D111A);
+  border:1px solid #2A3350;
+  box-shadow:0 0 0 1px rgba(94,106,210,.08), 0 6px 18px rgba(94,106,210,.15);
+}
+.logo svg{width:18px;height:18px;fill:var(--accent-2)}
+.brand h1{font-size:15px;font-weight:700;letter-spacing:.14em}
+.brand small{display:block;font-size:9.5px;font-weight:600;letter-spacing:.22em;color:var(--faint);text-transform:uppercase;margin-top:1px}
+.actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+.btn{appearance:none;border:1px solid var(--border);background:var(--panel-2);color:var(--muted);
+  font:600 11.5px var(--sans);letter-spacing:.02em;border-radius:8px;padding:8px 12px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:7px;transition:all .15s ease;text-decoration:none}
+.btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.btn:hover{color:var(--text);border-color:#303B4E;background:var(--panel-3);transform:translateY(-1px)}
+.btn.primary{background:linear-gradient(160deg,var(--accent),#4A55B8);border-color:#5E6AD288;color:#fff;
+  box-shadow:0 4px 16px rgba(94,106,210,.35)}
+.btn.primary:hover{background:linear-gradient(160deg,#6975DE,#535EC6);color:#fff;box-shadow:0 6px 22px rgba(94,106,210,.45)}
+.btn.danger-ghost:hover{border-color:var(--red);color:var(--red)}
+kbd{font:600 9.5px var(--mono);color:var(--muted);background:rgba(255,255,255,.05);border:1px solid var(--border);
+  border-bottom-width:2px;border-radius:4px;padding:1.5px 5px}
+
+/* ---------- tabs ---------- */
+.tabs{position:sticky;top:0;z-index:40;display:flex;align-items:flex-end;justify-content:space-between;gap:14px;
+  padding:14px 2px 0;background:linear-gradient(180deg,var(--bg) 82%,transparent);flex-wrap:wrap}
+.tabset{display:flex;gap:2px;border-bottom:1px solid var(--border);flex:1;min-width:280px}
+.tab{appearance:none;background:none;border:none;color:var(--faint);cursor:pointer;
+  font:700 11px var(--sans);letter-spacing:.13em;padding:10px 16px 12px;position:relative;transition:color .15s}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--text)}
+.tab.active::after{content:"";position:absolute;left:10px;right:10px;bottom:-1px;height:2px;border-radius:2px;
+  background:linear-gradient(90deg,var(--accent),var(--accent-2));box-shadow:0 0 12px rgba(94,106,210,.6)}
+.tab .cnt{font:600 9px var(--mono);color:var(--faint);margin-left:6px;opacity:.9}
+.period{font:500 10.5px var(--mono);color:var(--faint);padding-bottom:12px;letter-spacing:.03em}
+.period b{color:var(--muted);font-weight:600}
+
+/* ---------- cards ---------- */
+.card{position:relative;background:linear-gradient(180deg,var(--panel) 0%,#0C0F16 100%);
+  border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.card::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.09),transparent)}
+
+/* ---------- charts ---------- */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+.chart-card .cc-head{display:flex;align-items:flex-start;justify-content:space-between;padding:15px 18px 4px}
+.cc-label{font:700 9.5px var(--sans);letter-spacing:.19em;color:var(--faint);text-transform:uppercase;display:flex;align-items:center;gap:7px}
+.cc-label i{width:6px;height:6px;border-radius:2px;transform:rotate(45deg);display:inline-block}
+.cc-label i.g{background:var(--green);box-shadow:0 0 8px rgba(47,191,143,.7)}
+.cc-label i.v{background:var(--accent-2);box-shadow:0 0 8px rgba(122,134,232,.7)}
+.cc-cur{text-align:right}
+.cc-cur .v{font:700 20px var(--mono);letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.15}
+.cc-cur .a{font:500 9.5px var(--mono);color:var(--faint);margin-top:2px}
+.chart{position:relative;height:216px;margin-top:2px}
+.chart svg{display:block}
+.chart .grid{stroke:rgba(255,255,255,.045);stroke-width:1}
+.chart .zero{stroke:rgba(255,255,255,.16);stroke-width:1}
+.chart .ylab{fill:#5C6577;font:500 9.5px var(--mono);text-anchor:end}
+.chart .xlab{fill:#5C6577;font:500 9.5px var(--mono);text-anchor:middle}
+.chart .ov{fill:transparent}
+.chart .xh line{stroke:#4A5568;stroke-width:1;stroke-dasharray:3 3}
+.chart-empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center;padding:0 24px}
+.chart-empty .ce-title{font:600 12px var(--sans);color:var(--muted)}
+.chart-empty .ce-sub{font:500 10.5px var(--mono);color:var(--faint)}
+.chart-tip{position:absolute;top:10px;min-width:150px;pointer-events:none;z-index:5;
+  background:rgba(13,17,25,.94);border:1px solid var(--border-2);border-radius:9px;padding:9px 11px;
+  box-shadow:0 8px 28px rgba(0,0,0,.5);backdrop-filter:blur(6px);transition:left .05s linear}
+.chart-tip .tt-date{font:600 10px var(--mono);color:var(--muted)}
+.chart-tip .tt-venue{font:600 10px var(--mono);color:var(--accent-2);margin:1px 0 6px;word-break:break-word}
+.chart-tip .tt-row{display:flex;justify-content:space-between;gap:14px;font:500 11px var(--sans);color:var(--muted);padding:1px 0}
+.chart-tip .tt-row b{font:600 11.5px var(--mono);font-variant-numeric:tabular-nums;color:var(--text)}
+.chart-tip .tt-row b.pos{color:var(--green)} .chart-tip .tt-row b.neg{color:var(--red)}
+
+/* ---------- KPIs ---------- */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:14px}
+.kpi{padding:15px 17px 13px}
+.kpi .k-label{font:700 9.5px var(--sans);letter-spacing:.17em;color:var(--faint);text-transform:uppercase}
+.kpi .k-value{font:700 23px var(--mono);letter-spacing:-.03em;margin-top:5px;font-variant-numeric:tabular-nums;line-height:1.1}
+.kpi .k-sub{font:500 10px var(--mono);color:var(--faint);margin-top:5px}
+.pos{color:var(--green)!important} .neg{color:var(--red)!important} .neu{color:var(--muted)!important}
+.roi-note{font:500 10px var(--mono);color:var(--faint);margin-top:9px;letter-spacing:.02em}
+
+/* ---------- table ---------- */
+.table-card{margin-top:14px}
+.tc-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px 10px;flex-wrap:wrap}
+.tc-title{font:700 9.5px var(--sans);letter-spacing:.19em;color:var(--faint);text-transform:uppercase}
+.tc-count{font:500 10px var(--mono);color:var(--faint)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;padding:0 18px 12px}
+.chip{appearance:none;cursor:pointer;font:600 10.5px var(--mono);letter-spacing:.02em;color:var(--muted);
+  background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:999px;padding:4px 11px;transition:all .14s}
+.chip:hover{color:var(--text);border-color:#333F52}
+.chip.active{color:#B9C0FF;background:rgba(94,106,210,.14);border-color:rgba(94,106,210,.55)}
+.table-scroll{overflow-x:auto;border-top:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;min-width:680px}
+thead th{font:700 9.5px var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--faint);
+  text-align:left;padding:9px 14px;border-bottom:1px solid var(--border);background:#0C1017;
+  position:sticky;top:0;white-space:nowrap}
+thead th.r, td.r{text-align:right}
+tbody td{padding:9px 14px;border-bottom:1px solid rgba(28,35,48,.55);font-variant-numeric:tabular-nums;white-space:nowrap;vertical-align:middle}
+tbody tr:hover{background:rgba(255,255,255,.018)}
+tbody tr:last-child td{border-bottom:none}
+td .dt{font:600 12px var(--mono)}
+td .dy{font:500 9.5px var(--mono);color:var(--faint);margin-top:1px}
+.tag{font:600 10.5px var(--mono);color:#9AA6C2;background:rgba(94,106,210,.09);border:1px solid rgba(94,106,210,.28);
+  border-radius:6px;padding:2.5px 8px;cursor:pointer;transition:all .13s;max-width:220px;display:inline-block;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+.tag:hover{color:#B9C0FF;border-color:rgba(94,106,210,.55)}
+td.num{font:600 12px var(--mono);color:#B7BECd}
+td.pnl{font:700 12.5px var(--mono)}
+.row-acts{display:flex;gap:4px;justify-content:flex-end;opacity:.4;transition:opacity .15s}
+tbody tr:hover .row-acts{opacity:1}
+@media (hover:none){.row-acts{opacity:1}}
+.icon-btn{appearance:none;background:none;border:1px solid transparent;border-radius:6px;color:var(--faint);
+  width:26px;height:26px;display:grid;place-items:center;cursor:pointer;transition:all .13s}
+.icon-btn svg{width:12.5px;height:12.5px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.icon-btn:hover{color:var(--text);border-color:var(--border);background:rgba(255,255,255,.04)}
+.icon-btn.del-armed{color:#fff;background:var(--red);border-color:var(--red);width:auto;padding:0 8px;font:700 9px var(--sans);letter-spacing:.06em}
+tfoot td{padding:10px 14px;border-top:1px solid var(--border);background:#0C1017;
+  font:700 11.5px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.empty-cell{padding:34px 14px!important;text-align:center;color:var(--faint);font:500 11.5px var(--mono)!important;white-space:normal!important}
+
+/* ---------- onboarding ---------- */
+.hero{display:none;max-width:520px;margin:60px auto 30px;text-align:center;padding:44px 36px 38px}
+.hero.show{display:block}
+.hero .h-logo{width:56px;height:56px;border-radius:15px;margin:0 auto 18px;display:grid;place-items:center;
+  background:linear-gradient(145deg,#1A2132,#0D111A);border:1px solid #2A3350;box-shadow:0 10px 30px rgba(94,106,210,.25)}
+.hero .h-logo svg{width:28px;height:28px;fill:var(--accent-2)}
+.hero h2{font-size:19px;font-weight:700;letter-spacing:-.01em}
+.hero p{color:var(--muted);font-size:12.5px;margin:9px 0 22px}
+.hero .btn{margin:0 auto}
+.hero .hint{margin-top:16px;font:500 10.5px var(--mono);color:var(--faint)}
+
+/* ---------- modal ---------- */
+.backdrop{position:fixed;inset:0;z-index:100;background:rgba(5,6,9,.66);backdrop-filter:blur(7px);
+  display:flex;align-items:flex-start;justify-content:center;padding:8vh 16px 20px;opacity:0;transition:opacity .18s}
+.backdrop[hidden]{display:none}
+.backdrop.open{opacity:1}
+.modal{width:100%;max-width:430px;background:linear-gradient(180deg,#121722,#0D111A);
+  border:1px solid #262F42;border-radius:15px;box-shadow:0 24px 70px rgba(0,0,0,.6),0 0 0 1px rgba(94,106,210,.06);
+  transform:translateY(10px) scale(.985);transition:transform .18s}
+.backdrop.open .modal{transform:none}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:17px 20px 0}
+.modal-head h2{font-size:14px;font-weight:700;letter-spacing:.02em}
+.modal-body{padding:15px 20px 20px;display:flex;flex-direction:column;gap:13px}
+.field label{display:flex;justify-content:space-between;align-items:baseline;font:700 10px var(--sans);letter-spacing:.13em;
+  text-transform:uppercase;color:var(--faint);margin-bottom:6px}
+.field label em{font:600 9px var(--mono);color:var(--green);letter-spacing:.04em;font-style:normal;text-transform:none}
+.field input{width:100%;background:#0A0E15;border:1px solid var(--border);border-radius:9px;color:var(--text);
+  font:600 13.5px var(--mono);padding:10px 12px;outline:none;transition:border-color .14s,box-shadow .14s;
+  font-variant-numeric:tabular-nums}
+.field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(94,106,210,.18)}
+.field input::placeholder{color:#3C4454;font-weight:500}
+.field input[type=number]::-webkit-outer-spin-button,.field input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.field input[type=number]{-moz-appearance:textfield;appearance:textfield}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-err{font:600 11px var(--sans);color:var(--red);background:rgba(246,70,93,.08);border:1px solid rgba(246,70,93,.3);
+  border-radius:8px;padding:8px 11px}
+.modal-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:4px}
+.modal-foot .keys{display:flex;gap:10px;align-items:center;font:500 10px var(--mono);color:var(--faint)}
+.modal-foot .btns{display:flex;gap:8px}
+
+/* ---------- sync indicator ---------- */
+.sync-dot{appearance:none;background:var(--panel-2);border:1px solid var(--border);border-radius:999px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:6px;padding:7px 11px;font:700 9px var(--mono);letter-spacing:.08em;
+  color:var(--muted);text-transform:uppercase;transition:all .15s}
+.sync-dot i{width:6px;height:6px;border-radius:50%;background:#E3A12E;box-shadow:0 0 7px rgba(227,161,46,.6)}
+.sync-dot.synced{color:var(--green)} .sync-dot.synced i{background:var(--green);box-shadow:0 0 7px rgba(47,191,143,.7)}
+.sync-dot.syncing{color:var(--accent-2)} .sync-dot.syncing i{background:var(--accent-2);box-shadow:0 0 7px rgba(122,134,232,.8);animation:pulse 1s infinite}
+.sync-dot.error{color:#E3A12E}
+.sync-dot.nosync{color:var(--red)} .sync-dot.nosync i{background:var(--red);box-shadow:0 0 7px rgba(246,70,93,.7)}
+.sync-dot:hover{border-color:#303B4E}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* ---------- view-only mode ---------- */
+body.view-only #btnNew,body.view-only #btnImport,body.view-only #btnHero,body.view-only .row-acts{display:none}
+.vo-badge{display:none;font:700 9px var(--mono);letter-spacing:.12em;color:#E3A12E;border:1px solid rgba(227,161,46,.4);
+  background:rgba(227,161,46,.08);border-radius:999px;padding:5px 11px;margin-bottom:9px}
+body.view-only .vo-badge{display:inline-block}
+
+/* ---------- toast/footer ---------- */
+#toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,16px);z-index:200;opacity:0;pointer-events:none;
+  background:#131926;border:1px solid #2A3448;color:var(--text);font:600 11.5px var(--sans);
+  padding:9px 16px;border-radius:10px;box-shadow:0 10px 34px rgba(0,0,0,.55);transition:all .22s ease}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+footer{margin-top:34px;text-align:center;font:500 10.5px var(--mono);color:#454D5F;line-height:2}
+footer .sep{margin:0 9px;color:#2A3040}
+
+/* ---------- responsive ---------- */
+@media (max-width:860px){
+  .charts-row{grid-template-columns:1fr}
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .tab .cnt{display:none}
+}
+@media (max-width:520px){
+  .kpi-grid{gap:10px}.charts-row{gap:10px}
+  header{padding-top:14px}
+  .brand h1{font-size:13px}
+  .tab{padding:10px 11px 12px;font-size:10px}
+  .cc-cur .v{font-size:17px}
+  .kpi .k-value{font-size:19px}
+  .actions .label-txt{display:none}
+}
+</style>
+</head>
+<body>
+<div class="bg-fx"></div>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <div class="logo"><svg viewBox="0 0 24 24"><path d="M12 3c-2.5 4.2-7 6.8-7 11a4.5 4.5 0 0 0 7.5 3.3c-.4 1.6-1.1 2.7-2.3 3.7h3.6c-1.2-1-1.9-2.1-2.3-3.7A4.5 4.5 0 0 0 19 14c0-4.2-4.5-6.8-7-11Z"/></svg></div>
+      <div><h1>BANKROLL</h1><small>poker pnl ledger</small></div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="btnCsv" title="Export sessions as CSV"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg><span class="label-txt">CSV</span></button>
+      <button class="btn" id="btnJson" title="Backup sessions as JSON"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg><span class="label-txt">Backup</span></button>
+      <button class="btn" id="btnImport" title="Restore from a JSON backup"><svg viewBox="0 0 24 24"><path d="M12 15V3m0 0 4 4m-4-4-4 4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg><span class="label-txt">Import</span></button>
+      <button class="btn primary" id="btnNew"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span class="label-txt">Log session</span>&nbsp;<kbd>N</kbd></button>
+      <button class="sync-dot local" id="syncDot" title="Sync status"><i></i><span id="syncTxt">local</span></button>
+      <button class="btn" id="btnAuth" title="Log in to edit this ledger"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span id="authTxt">Login</span></button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <div class="tabset" role="tablist">
+      <button class="tab active" data-tab="lifetime" role="tab">LIFETIME<span class="cnt" id="cntLife"></span></button>
+      <button class="tab" data-tab="year" role="tab"><span id="lblYear">YEAR</span><span class="cnt" id="cntYear"></span></button>
+      <button class="tab" data-tab="month" role="tab"><span id="lblMonth">MONTH</span><span class="cnt" id="cntMon"></span></button>
+    </div>
+    <span class="vo-badge" id="voBadge">VIEW ONLY</span>
+    <div class="period" id="periodTxt"></div>
+  </nav>
+
+  <main>
+    <!-- onboarding -->
+    <section class="card hero" id="hero">
+      <div class="h-logo"><svg viewBox="0 0 24 24"><path d="M12 3c-2.5 4.2-7 6.8-7 11a4.5 4.5 0 0 0 7.5 3.3c-.4 1.6-1.1 2.7-2.3 3.7h3.6c-1.2-1-1.9-2.1-2.3-3.7A4.5 4.5 0 0 0 19 14c0-4.2-4.5-6.8-7-11Z"/></svg></div>
+      <h2>Track every session like a trading desk</h2>
+      <p>Log your buy-ins, venue and net PnL after each game. Charts, ROI and records update instantly — and everything autosaves in this browser.</p>
+      <button class="btn primary" id="btnHero">Log your first session</button>
+      <div class="hint">tip: press <kbd>N</kbd> anywhere to log a session</div>
+    </section>
+
+    <!-- dashboard -->
+    <section id="dash" style="display:none">
+      <div class="charts-row">
+        <div class="card chart-card">
+          <div class="cc-head">
+            <div class="cc-label"><i class="g"></i>Cumulative PnL</div>
+            <div class="cc-cur"><div class="v" id="hcPnlVal">—</div><div class="a" id="hcPnlSub"></div></div>
+          </div>
+          <div class="chart" id="chartPnl"></div>
+        </div>
+        <div class="card chart-card">
+          <div class="cc-head">
+            <div class="cc-label"><i class="v"></i>ROI · cumulative</div>
+            <div class="cc-cur"><div class="v" id="hcRoiVal">—</div><div class="a" id="hcRoiSub"></div></div>
+          </div>
+          <div class="chart" id="chartRoi"></div>
+        </div>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="card kpi"><div class="k-label">Total games</div><div class="k-value" id="kGames">0</div><div class="k-sub" id="kGamesSub">—</div></div>
+        <div class="card kpi"><div class="k-label">Total buy-in</div><div class="k-value" id="kBuyIn">₹0</div><div class="k-sub" id="kBuyInSub">—</div></div>
+        <div class="card kpi"><div class="k-label">Net PnL</div><div class="k-value neu" id="kPnl">₹0</div><div class="k-sub" id="kPnlSub">—</div></div>
+        <div class="card kpi"><div class="k-label">Overall ROI</div><div class="k-value neu" id="kRoi">—</div><div class="k-sub" id="kRoiSub">—</div></div>
+      </div>
+      <div class="roi-note">ROI = net PnL ÷ total buy-in (min buy-in × buy-ins) × 100 · values in ₹</div>
+
+      <div class="card table-card">
+        <div class="tc-head">
+          <div class="tc-title">Session log</div>
+          <div class="tc-count" id="tblCount"></div>
+        </div>
+        <div class="chips" id="chips"></div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr>
+              <th>Date</th><th>Venue</th><th class="r">Min BI</th><th class="r">Buy-ins</th><th class="r">Total BI</th><th class="r">PnL</th><th style="width:64px"></th>
+            </tr></thead>
+            <tbody id="tbody"></tbody>
+            <tfoot id="tfoot" style="display:none"><tr>
+              <td colspan="4" id="tfLabel">TOTAL</td>
+              <td class="r" id="tfBuy">—</td><td class="r" id="tfPnl">—</td><td></td>
+            </tr></tfoot>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      syncs across all your devices via Netlify<span class="sep">·</span>falls back to browser storage when offline<span class="sep">·</span><kbd>N</kbd> new session <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> tabs <kbd>esc</kbd> close
+    </footer>
+  </main>
+</div>
+
+<!-- modal -->
+<div class="backdrop" id="backdrop" hidden>
+  <form class="modal" id="sessionForm" novalidate>
+    <div class="modal-head">
+      <h2 id="formTitle">Log session</h2>
+      <button type="button" class="icon-btn" id="btnCloseModal" title="Close (Esc)"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label for="fDate">Date</label>
+        <input type="date" id="fDate" required>
+      </div>
+      <div class="field">
+        <label for="fVenue">Where did you play?</label>
+        <input type="text" id="fVenue" list="venueList" placeholder="online table, college tourney…" maxlength="48" autocomplete="off" required>
+        <datalist id="venueList"></datalist>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label for="fMinBuy">Min buy-in (₹)</label>
+          <input type="number" id="fMinBuy" min="0" step="any" inputmode="decimal" placeholder="500" required>
+        </div>
+        <div class="field">
+          <label for="fBIs">No. of buy-ins</label>
+          <input type="number" id="fBIs" min="1" step="1" inputmode="numeric" placeholder="2" required>
+        </div>
+      </div>
+      <div class="field">
+        <label for="fPnl">PnL (₹) <em>negatives allowed here</em></label>
+        <input type="number" id="fPnl" step="any" inputmode="decimal" placeholder="-350  or  1200" required>
+      </div>
+      <div class="form-err" id="formErr" hidden></div>
+      <div class="modal-foot">
+        <div class="keys"><span><kbd>↵</kbd> save</span></div>
+        <div class="btns">
+          <button type="button" class="btn" id="btnCancel">Cancel</button>
+          <button type="submit" class="btn primary" id="btnSave">Save session</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- auth modal -->
+<div class="backdrop" id="authBackdrop" hidden>
+  <form class="modal" id="authForm" style="max-width:340px" novalidate>
+    <div class="modal-head">
+      <h2>Owner login</h2>
+      <button type="button" class="icon-btn" id="btnCloseAuth" title="Close (Esc)"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label for="fAuth">Password</label>
+        <input type="password" id="fAuth" autocomplete="current-password" placeholder="••••••••" required>
+      </div>
+      <div class="form-err" id="authErr" hidden></div>
+      <div class="modal-foot">
+        <div class="keys"><span>guests stay view-only</span></div>
+        <div class="btns"><button type="submit" class="btn primary">Unlock editing</button></div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<div id="toast"></div>
+<input type="file" id="fileImport" accept="application/json,.json" hidden>
+
+<script>
+(function(){
+'use strict';
+
+/* ================= storage ================= */
+var LS_KEY='bankroll.sessions.v1';
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8);}
+function norm(s){
+  if(!s||typeof s!=='object')return null;
+  var d=String(s.date||'');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return null;
+  var m=+s.minBuyIn, b=+s.buyIns, p=+s.pnl;
+  if(!isFinite(m)||!isFinite(b)||!isFinite(p))return null;
+  var v=String(s.venue==null?'':s.venue).trim().slice(0,48);
+  if(!v)return null;
+  return {id:(typeof s.id==='string'&&s.id)?s.id:uid(), date:d, minBuyIn:m, buyIns:b, pnl:p, venue:v, createdAt:+s.createdAt||Date.now()};
+}
+function loadSessions(){
+  try{
+    var raw=localStorage.getItem(LS_KEY); if(!raw)return [];
+    var a=JSON.parse(raw); if(!Array.isArray(a))return [];
+    return a.map(norm).filter(Boolean);
+  }catch(e){return [];}
+}
+var TS_KEY='bankroll.updatedAt.v1';
+function loadTS(){try{return +localStorage.getItem(TS_KEY)||0;}catch(e){return 0;}}
+function saveLocal(){try{localStorage.setItem(LS_KEY,JSON.stringify(sessions));}catch(e){toast('Could not save — storage unavailable');}}
+// every local mutation: bump timestamp, persist, push to cloud (debounced)
+function save(){localUpdatedAt=Date.now();try{localStorage.setItem(TS_KEY,String(localUpdatedAt));}catch(e){} saveLocal(); schedulePush();}
+
+var sessions=loadSessions();
+var localUpdatedAt=loadTS();
+// migrate data saved before the sync feature existed
+if(sessions.length&&!localUpdatedAt){localUpdatedAt=Date.now();try{localStorage.setItem(TS_KEY,String(localUpdatedAt));}catch(e){}}
+var tab='lifetime';
+var venueFilter='all';
+var editingId=null;
+var delArmed={id:null,t:null};
+var toastTimer=null;
+
+/* ================= utils ================= */
+function $(s){return document.querySelector(s);}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function pad2(n){return String(n).padStart(2,'0');}
+
+var MS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var ML=['January','February','March','April','May','June','July','August','September','October','November','December'];
+var DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+function parseDS(ds){var p=ds.split('-');return new Date(+p[0],+p[1]-1,+p[2]);}
+function fmtShort(ds){var d=parseDS(ds);return d.getDate()+' '+MS[d.getMonth()];}
+function fmtMed(ds){var d=parseDS(ds);return DOW[d.getDay()]+', '+d.getDate()+' '+MS[d.getMonth()]+' '+d.getFullYear();}
+function dowTiny(ds){var d=parseDS(ds);var y=d.getFullYear(),cy=new Date().getFullYear();
+  return DOW[d.getDay()]+(y!==cy?" '"+String(y).slice(2):'');}
+function todayStr(){var t=new Date();return t.getFullYear()+'-'+pad2(t.getMonth()+1)+'-'+pad2(t.getDate());}
+function curY(){return String(new Date().getFullYear());}
+function curM(){return pad2(new Date().getMonth()+1);}
+function periodName(id){
+  if(id==='year')return curY();
+  if(id==='month')return ML[+curM()-1]+' '+curY();
+  return 'lifetime';
+}
+
+var inr=new Intl.NumberFormat('en-IN',{maximumFractionDigits:0});
+function grp(a){return inr.format(Math.round(a));}
+function trim1(n){return (Math.round(n*10)/10).toString();}
+function fmtMoney(v,signed){
+  var s=v>0&&signed?'+':v<0?'-':'';
+  return s+'₹'+grp(Math.abs(v));
+}
+function fmtPct(v,dec,signed){
+  if(dec==null)dec=1;
+  return (v>0&&signed?'+':'')+v.toFixed(dec)+'%';
+}
+function cmpct(a){
+  if(a>=1e7)return trim1(a/1e7)+'Cr';
+  if(a>=1e5)return trim1(a/1e5)+'L';
+  if(a>=1e3)return trim1(a/1e3)+'k';
+  return String(Math.round(a));
+}
+function fmtAxisMoney(v){return (v<0?'-':'')+'₹'+cmpct(Math.abs(v));}
+function fmtAxisPct(v){var a=Math.abs(v);return v.toFixed(a>=10?0:1)+'%';}
+
+/* ================= data ops ================= */
+function scopeAll(){return sessions;}
+function scopeList(id){
+  if(id==='year'){var y=curY();return sessions.filter(function(s){return s.date.slice(0,4)===y;});}
+  if(id==='month'){var p=curY()+'-'+curM();return sessions.filter(function(s){return s.date.slice(0,7)===p;});}
+  return sessions;
+}
+function sortAsc(a){return a.slice().sort(function(x,y){
+  if(x.date!==y.date)return x.date<y.date?-1:1;
+  return (x.createdAt||0)-(y.createdAt||0);});}
+function sortDesc(a){return a.slice().sort(function(x,y){
+  if(x.date!==y.date)return x.date<y.date?1:-1;
+  return (y.createdAt||0)-(x.createdAt||0);});}
+function totalBI(s){return s.minBuyIn*s.buyIns;}
+
+function statsOf(list){
+  var n=list.length,buy=0,pnl=0,wins=0,roiSum=0,venues={},avg;
+  list.forEach(function(s){
+    var b=totalBI(s);buy+=b;pnl+=s.pnl;
+    if(s.pnl>0)wins++;
+    if(b>0)roiSum+=s.pnl/b*100;
+    venues[s.venue]=1;
+  });
+  return {n:n,buy:buy,pnl:pnl,
+    roi:buy>0?pnl/buy*100:null,
+    winRate:n?wins/n*100:null,
+    avgBuy:n?buy/n:0,
+    avgRoi:n?roiSum/n:null,
+    venues:Object.keys(venues).length};
+}
+function seriesOf(list){
+  var t=sortAsc(list),cum=0,cumBI=0;
+  return t.map(function(s,i){
+    cum+=s.pnl;cumBI+=totalBI(s);
+    var b=totalBI(s);
+    return {i:i,date:s.date,venue:s.venue,pnl:s.pnl,
+      sessROI:b>0?s.pnl/b*100:0,
+      cum:cum, roi:cumBI>0?cum/cumBI*100:0};
+  });
+}
+
+/* ================= charts ================= */
+var C_GREEN='#2FBF8F',C_RED='#F6465D',C_MUT='#8A93A6';
+
+function niceTicks(min,max,count){
+  if(min===max)return [min];
+  var span=max-min, raw=span/count, mag=Math.pow(10,Math.floor(Math.log10(raw)));
+  var step=null,cands=[1,2,2.5,5,10];
+  for(var i=0;i<cands.length;i++){if(cands[i]*mag>=raw){step=cands[i]*mag;break;}}
+  if(step==null)step=10*mag;
+  var lo=Math.ceil((min-1e-9)/step)*step;
+  var out=[],N=Math.floor((max-lo)/step+1e-6)+1;
+  for(var k=0;k<N;k++)out.push(+(lo+k*step).toFixed(10));
+  if(min<0&&max>0&&!out.some(function(v){return Math.abs(v)<step*1e-6;})){out.push(0);out.sort(function(a,b){return a-b;});}
+  return out;
+}
+
+function drawChart(el,pts,opts){
+  el.innerHTML='';
+  if(!pts.length){
+    var em=document.createElement('div');em.className='chart-empty';
+    em.innerHTML='<div class="ce-title">Nothing to plot yet</div><div class="ce-sub">'+esc(opts.empty)+'</div>';
+    el.appendChild(em);return;
+  }
+  var n=pts.length;
+  var W=Math.max(el.clientWidth,240),H=el.clientHeight;
+  var padL=46,padR=14,padT=14,padB=26,iw=W-padL-padR,ih=H-padT-padB;
+  var min=0,max=0;
+  pts.forEach(function(p){if(p.value<min)min=p.value;if(p.value>max)max=p.value;});
+  if(min===max){min-=1;max+=1;}
+  var padY=(max-min)*0.10;
+  if(max>0)max+=padY; if(min<0)min-=padY;
+  function X(i){return n===1?padL+iw/2:padL+(i/(n-1))*iw;}
+  function Y(v){return padT+((max-v)/(max-min))*ih;}
+  var ticks=niceTicks(min,max,4);
+  var lastV=pts[n-1].value;
+  var color=lastV>0?C_GREEN:lastV<0?C_RED:C_MUT;
+  var y0=Y(0), gid=opts.gid, s='';
+  s+='<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'">';
+  s+='<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1">'+
+     '<stop offset="0%" stop-color="'+color+'" stop-opacity="0.30"/>'+
+     '<stop offset="100%" stop-color="'+color+'" stop-opacity="0"/></linearGradient></defs>';
+  ticks.forEach(function(t){var y=Y(t).toFixed(2);
+    s+='<line class="grid" x1="'+padL+'" x2="'+(W-padR)+'" y1="'+y+'" y2="'+y+'"/>'+
+       '<text class="ylab" x="'+(padL-8)+'" y="'+(+y+3)+'">'+opts.fmtTick(t)+'</text>';});
+  if(min<0&&max>0)s+='<line class="zero" stroke-dasharray="3 4" x1="'+padL+'" x2="'+(W-padR)+'" y1="'+y0.toFixed(2)+'" y2="'+y0.toFixed(2)+'"/>';
+  var d='M'+X(0).toFixed(2)+','+y0.toFixed(2), d2='';
+  pts.forEach(function(p,i){var x=X(i).toFixed(2),y=Y(p.value).toFixed(2);
+    d+=' L'+x+','+y; d2+=(i===0?'M':' L')+x+','+y;});
+  d+=' L'+X(n-1).toFixed(2)+','+y0.toFixed(2)+' Z';
+  s+='<path d="'+d+'" fill="url(#'+gid+')"/>';
+  s+='<path d="'+d2+'" fill="none" stroke="'+color+'" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>';
+  var xl=X(n-1).toFixed(2),yl=Y(lastV).toFixed(2);
+  s+='<circle cx="'+xl+'" cy="'+yl+'" r="7" fill="'+color+'" opacity="0.18"/>'+
+     '<circle cx="'+xl+'" cy="'+yl+'" r="3" fill="'+color+'" stroke="#0B0E13" stroke-width="1.5"/>';
+  // x labels
+  var idxs=[];
+  if(n<=7){for(var i=0;i<n;i++)idxs.push(i);}
+  else{var step=Math.ceil((n-1)/5);for(var j=0;j<n-1;j+=step)idxs.push(j);idxs.push(n-1);}
+  var prevLab=null;
+  idxs.forEach(function(i){
+    var lab=fmtShort(pts[i].date);
+    if(lab===prevLab)return; prevLab=lab;
+    s+='<text class="xlab" x="'+X(i).toFixed(2)+'" y="'+(H-8)+'">'+lab+'</text>';
+  });
+  s+='<g class="xh" style="display:none">'+
+     '<line x1="0" x2="0" y1="'+padT+'" y2="'+(H-padB)+'"/>'+
+     '<circle r="4" fill="#0B0E13" stroke="'+color+'" stroke-width="2"/></g>';
+  s+='<rect class="ov" x="'+padL+'" y="'+padT+'" width="'+iw+'" height="'+ih+'"/>';
+  s+='</svg>';
+  el.innerHTML=s;
+
+  var tip=document.createElement('div');tip.className='chart-tip';tip.style.display='none';
+  el.appendChild(tip);
+  var g=el.querySelector('.xh'),gLine=g.querySelector('line'),gDot=g.querySelector('circle');
+  var ov=el.querySelector('.ov');
+  ov.addEventListener('mousemove',function(e){
+    var r=el.getBoundingClientRect();
+    var mx=e.clientX-r.left;
+    var i=n===1?0:clamp(Math.round((mx-padL)/(iw/(n-1))),0,n-1);
+    var p=pts[i],x=X(i),y=Y(p.value);
+    g.style.display='block';
+    gLine.setAttribute('x1',x);gLine.setAttribute('x2',x);
+    gLine.setAttribute('stroke',color);gDot.setAttribute('stroke',color);
+    gDot.setAttribute('cx',x);gDot.setAttribute('cy',y);
+    tip.innerHTML=opts.tip(p);
+    tip.style.display='block';
+    var tw=tip.offsetWidth,th=tip.offsetHeight;
+    tip.style.left=clamp(x+14,4,Math.max(4,W-tw-6))+'px';
+    tip.style.top=clamp(y-th/2,4,Math.max(4,H-th-4))+'px';
+  });
+  ov.addEventListener('mouseleave',function(){
+    g.style.display='none';tip.style.display='none';
+  });
+}
+
+function tipPnl(p){
+  var pc=p.pnl>0?'pos':p.pnl<0?'neg':'';
+  var cc=p.cum>0?'pos':p.cum<0?'neg':'';
+  return '<div class="tt-date">'+fmtMed(p.date)+'</div>'+
+         '<div class="tt-venue">#'+esc(p.venue)+'</div>'+
+         '<div class="tt-row">Session <b class="'+pc+'">'+fmtMoney(p.pnl,true)+'</b></div>'+
+         '<div class="tt-row">Cumulative <b class="'+cc+'">'+fmtMoney(p.cum,true)+'</b></div>';
+}
+function tipRoi(p){
+  var pc=p.sessROI>0?'pos':p.sessROI<0?'neg':'';
+  var cc=p.roi>0?'pos':p.roi<0?'neg':'';
+  return '<div class="tt-date">'+fmtMed(p.date)+'</div>'+
+         '<div class="tt-venue">#'+esc(p.venue)+'</div>'+
+         '<div class="tt-row">Session ROI <b class="'+pc+'">'+fmtPct(p.sessROI,1,true)+'</b></div>'+
+         '<div class="tt-row">Cum. ROI <b class="'+cc+'">'+fmtPct(p.roi,1,true)+'</b></div>';
+}
+
+/* ================= render ================= */
+var chartPnlEl=$('#chartPnl'),chartRoiEl=$('#chartRoi');
+
+function renderCharts(){
+  var list=scopeList(tab);
+  var ser=seriesOf(list);
+  var emptyMsg='No sessions logged for '+periodName(tab)+' yet — press N to add one.';
+  var pnlPts=ser.map(function(p){return {date:p.date,venue:p.venue,pnl:p.pnl,cum:p.cum,value:p.cum};});
+  var roiPts=ser.map(function(p){return {date:p.date,venue:p.venue,sessROI:p.sessROI,roi:p.roi,value:p.roi};});
+  drawChart(chartPnlEl,pnlPts,{gid:'gPnl',fmtTick:fmtAxisMoney,tip:tipPnl,empty:emptyMsg});
+  drawChart(chartRoiEl,roiPts,{gid:'gRoi',fmtTick:fmtAxisPct,tip:tipRoi,empty:emptyMsg});
+  // chart headers
+  var pv=$('#hcPnlVal'),ps=$('#hcPnlSub'),rv=$('#hcRoiVal'),rs=$('#hcRoiSub');
+  if(!ser.length){
+    pv.textContent='—';pv.className='v neu';ps.textContent='';
+    rv.textContent='—';rv.className='v neu';rs.textContent='';
+  }else{
+    var last=ser[ser.length-1];
+    pv.textContent=fmtMoney(last.cum,true);
+    pv.className='v '+(last.cum>0?'pos':last.cum<0?'neg':'neu');
+    ps.textContent='as of '+fmtShort(last.date)+' · '+ser.length+' session'+(ser.length>1?'s':'');
+    rv.textContent=fmtPct(last.roi,1,true);
+    rv.className='v '+(last.roi>0?'pos':last.roi<0?'neg':'neu');
+    rs.textContent='net ÷ buy-in · since '+fmtShort(ser[0].date);
+  }
+}
+
+function renderKpis(){
+  var st=statsOf(scopeList(tab));
+  $('#kGames').textContent=st.n;
+  $('#kGamesSub').textContent=st.n?('across '+st.venues+' venue'+(st.venues>1?'s':'')):'no games logged';
+  $('#kBuyIn').textContent='₹'+grp(st.buy);
+  $('#kBuyInSub').textContent=st.n?('avg '+fmtMoney(st.avgBuy)+' / session'):'—';
+  var kP=$('#kPnl');
+  kP.textContent=fmtMoney(st.pnl,st.pnl!==0);
+  kP.className='k-value '+(st.pnl>0?'pos':st.pnl<0?'neg':'neu');
+  $('#kPnlSub').textContent=st.n&&st.winRate!=null?('win rate '+st.winRate.toFixed(0)+'%'):'—';
+  var kR=$('#kRoi');
+  if(st.roi==null){kR.textContent='—';kR.className='k-value neu';}
+  else{kR.textContent=fmtPct(st.roi,1,true);kR.className='k-value '+(st.roi>0?'pos':st.roi<0?'neg':'neu');}
+  $('#kRoiSub').textContent=st.n&&st.avgRoi!=null?('avg '+fmtPct(st.avgRoi,1,true)+' / session'):'—';
+}
+
+function renderChips(){
+  var wrap=$('#chips');
+  var counts={},list=scopeList(tab);
+  list.forEach(function(s){counts[s.venue]=(counts[s.venue]||0)+1;});
+  var venues=Object.keys(counts).sort(function(a,b){return counts[b]-counts[a]||a.localeCompare(b);});
+  if(venueFilter!=='all'&&!counts[venueFilter])venueFilter='all';
+  if(!venues.length){wrap.innerHTML='';wrap.style.display='none';return;}
+  wrap.style.display='flex';
+  var h='<button class="chip'+(venueFilter==='all'?' active':'')+'" data-v="all">#all</button>';
+  venues.forEach(function(v){
+    h+='<button class="chip'+(venueFilter===v?' active':'')+'" data-v="'+esc(v)+'">#'+esc(v)+'</button>';
+  });
+  wrap.innerHTML=h;
+}
+
+function renderTable(){
+  var list=scopeList(tab);
+  var filt=venueFilter==='all'?list:list.filter(function(s){return s.venue===venueFilter;});
+  var rows=sortDesc(filt);
+  var tb=$('#tbody'),h='';
+  if(!rows.length){
+    h='<tr><td colspan="7" class="empty-cell">no sessions logged for '+esc(periodName(tab))+(venueFilter!=='all'?' · #'+esc(venueFilter):'')+' — press <kbd>N</kbd> to add one</td></tr>';
+    $('#tfoot').style.display='none';
+  }else{
+    var totB=0,totP=0;
+    rows.forEach(function(s){
+      var b=totalBI(s);totB+=b;totP+=s.pnl;
+      h+='<tr data-id="'+s.id+'">'+
+        '<td><div class="dt">'+fmtShort(s.date)+'</div><div class="dy">'+dowTiny(s.date)+'</div></td>'+
+        '<td><span class="tag" title="'+esc(s.venue)+'">#'+esc(s.venue)+'</span></td>'+
+        '<td class="num r">'+fmtMoney(s.minBuyIn)+'</td>'+
+        '<td class="num r">'+s.buyIns+'×</td>'+
+        '<td class="num r">'+fmtMoney(b)+'</td>'+
+        '<td class="pnl r '+(s.pnl>0?'pos':s.pnl<0?'neg':'neu')+'">'+fmtMoney(s.pnl,true)+'</td>'+
+        '<td><div class="row-acts">'+
+          '<button class="icon-btn act-edit" title="Edit session"><svg viewBox="0 0 24 24"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>'+
+          '<button class="icon-btn act-del" title="Delete session"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>'+
+        '</div></td></tr>';
+    });
+    $('#tfLabel').textContent='TOTAL · '+rows.length+' GAME'+(rows.length>1?'S':'');
+    $('#tfBuy').textContent=fmtMoney(totB);
+    var tf=$('#tfPnl');tf.textContent=fmtMoney(totP,totP!==0);
+    tf.className=totP>0?'pos r':totP<0?'neg r':'r';
+    $('#tfoot').style.display='';
+  }
+  tb.innerHTML=h;
+  $('#tblCount').textContent=(venueFilter==='all'?'':('#'+venueFilter+' · '))+rows.length+' of '+list.length+' sessions';
+}
+
+function renderTabsMeta(){
+  var y=curY(),m=+curM()-1;
+  $('#lblYear').textContent=y;
+  $('#lblMonth').textContent=MS[m].toUpperCase()+" '"+y.slice(2);
+  $('#cntLife').textContent=sessions.length||'';
+  $('#cntYear').textContent=scopeList('year').length||'';
+  $('#cntMon').textContent=scopeList('month').length||'';
+  var p;
+  if(tab==='lifetime')p='<b>all time</b> · never resets';
+  else if(tab==='year')p='<b>'+y+'</b> · resets 1 Jan '+(+y+1);
+  else p='<b>'+ML[m]+' '+y+'</b> · resets 1 '+MS[(m+1)%12]+' '+(m===11?+y+1:y);
+  $('#periodTxt').innerHTML=p;
+  document.querySelectorAll('.tab').forEach(function(b){
+    b.classList.toggle('active',b.dataset.tab===tab);
+  });
+}
+
+function render(){
+  renderTabsMeta();
+  if(!sessions.length){
+    $('#hero').classList.add('show');
+    $('#dash').style.display='none';
+    return;
+  }
+  $('#hero').classList.remove('show');
+  $('#dash').style.display='block';
+  renderKpis();
+  renderCharts();
+  renderChips();
+  renderTable();
+}
+var renderQueued=false;
+function queueRender(){
+  if(renderQueued)return;renderQueued=true;
+  requestAnimationFrame(function(){renderQueued=false;render();});
+}
+
+/* ================= modal ================= */
+var backdrop=$('#backdrop'),form=$('#sessionForm'),formErr=$('#formErr');
+function openModal(edit){
+  if(!authed){openAuth();return;}
+  editingId=edit?edit.id:null;
+  $('#formTitle').textContent=edit?'Edit session':'Log session';
+  $('#btnSave').textContent=edit?'Save changes':'Save session';
+  formErr.hidden=true;
+  $('#fDate').value=edit?edit.date:todayStr();
+  $('#fVenue').value=edit?edit.venue:'';
+  $('#fMinBuy').value=edit?edit.minBuyIn:'';
+  $('#fBIs').value=edit?edit.buyIns:'';
+  $('#fPnl').value=edit?edit.pnl:'';
+  var dl=$('#venueList'),seen={},h='';
+  sessions.forEach(function(s){if(!seen[s.venue]){seen[s.venue]=1;h+='<option value="'+esc(s.venue)+'">';}});
+  dl.innerHTML=h;
+  backdrop.hidden=false;
+  requestAnimationFrame(function(){backdrop.classList.add('open');});
+  setTimeout(function(){$(edit?'#fDate':'#fVenue').focus();},60);
+}
+function closeModal(){
+  backdrop.classList.remove('open');
+  setTimeout(function(){backdrop.hidden=true;},180);
+  editingId=null;
+}
+function showErr(msg){formErr.textContent=msg;formErr.hidden=false;}
+
+form.addEventListener('submit',function(e){
+  e.preventDefault();
+  var date=$('#fDate').value.trim();
+  var venue=$('#fVenue').value.trim();
+  var minBuy=parseFloat($('#fMinBuy').value);
+  var bisStr=$('#fBIs').value.trim();
+  var pnlStr=$('#fPnl').value.trim();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return showErr('Pick a valid date for the session.');
+  if(!venue)return showErr('Tell me where you played — e.g. "online table" or "college tourney".');
+  if(!isFinite(minBuy)||minBuy<=0)return showErr('Min buy-in must be a positive number (no negatives here).');
+  if(bisStr===''||!isFinite(+bisStr)||+bisStr<1||Math.floor(+bisStr)!==+bisStr)return showErr('Number of buy-ins must be a whole number ≥ 1.');
+  if(pnlStr===''||!isFinite(+pnlStr))return showErr('Enter your PnL — positive or negative.');
+  var data={date:date,venue:venue,minBuyIn:minBuy,buyIns:+bisStr,pnl:+pnlStr};
+  if(editingId){
+    var s=sessions.find(function(x){return x.id===editingId;});
+    if(s){s.date=data.date;s.venue=data.venue;s.minBuyIn=data.minBuyIn;s.buyIns=data.buyIns;s.pnl=data.pnl;}
+    toast('Session updated');
+  }else{
+    sessions.push({id:uid(),createdAt:Date.now(),date:data.date,venue:data.venue,minBuyIn:data.minBuyIn,buyIns:data.buyIns,pnl:data.pnl});
+    toast((data.pnl>0?'+':data.pnl<0?'-':'')+'₹'+grp(Math.abs(data.pnl))+' logged · #'+(venue.length>18?venue.slice(0,18)+'…':venue));
+  }
+  save();closeModal();render();
+});
+
+$('#btnCloseModal').addEventListener('click',closeModal);
+$('#btnCancel').addEventListener('click',closeModal);
+backdrop.addEventListener('mousedown',function(e){if(e.target===backdrop)closeModal();});
+
+/* ================= table actions ================= */
+$('#tbody').addEventListener('click',function(e){
+  var tr=e.target.closest('tr[data-id]');if(!tr)return;
+  var id=tr.dataset.id;
+  var s=sessions.find(function(x){return x.id===id;});if(!s)return;
+  if(e.target.closest('.tag')){
+    venueFilter=(venueFilter===s.venue)?'all':s.venue;
+    renderChips();renderTable();return;
+  }
+  if(e.target.closest('.act-edit')){if(!authed)return openAuth();openModal(s);return;}
+  var delBtn=e.target.closest('.act-del');
+  if(delBtn){
+    if(!authed)return openAuth();
+    if(delArmed.id===id){
+      clearTimeout(delArmed.t);delArmed.id=null;
+      sessions=sessions.filter(function(x){return x.id!==id;});
+      save();render();toast('Session deleted');
+    }else{
+      delArmed.id=id;delBtn.classList.add('del-armed');delBtn.textContent='SURE?';
+      delArmed.t=setTimeout(function(){
+        delArmed.id=null;
+        delBtn.classList.remove('del-armed');
+        delBtn.innerHTML='<svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>';
+      },2400);
+    }
+  }
+});
+$('#chips').addEventListener('click',function(e){
+  var c=e.target.closest('.chip');if(!c)return;
+  venueFilter=c.dataset.v;renderChips();renderTable();
+});
+
+/* ================= tabs / keys ================= */
+document.querySelectorAll('.tab').forEach(function(b){
+  b.addEventListener('click',function(){
+    tab=b.dataset.tab;venueFilter='all';render();
+  });
+});
+$('#btnNew').addEventListener('click',function(){if(!authed)return openAuth();openModal(null);});
+$('#btnHero').addEventListener('click',function(){if(!authed)return openAuth();openModal(null);});
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    if(!backdrop.hidden){closeModal();return;}
+    if(!authBd.hidden){closeAuth();return;}
+    return;
+  }
+  var typing=/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement&&document.activeElement.tagName||'');
+  if(typing||!backdrop.hidden||!authBd.hidden||e.metaKey||e.ctrlKey||e.altKey)return;
+  if(e.key==='n'||e.key==='N'){if(!authed)return openAuth();openModal(null);}
+  else if(e.key==='1'){tab='lifetime';venueFilter='all';render();}
+  else if(e.key==='2'){tab='year';venueFilter='all';render();}
+  else if(e.key==='3'){tab='month';venueFilter='all';render();}
+});
+
+/* ================= export / import ================= */
+function download(name,text,type){
+  var b=new Blob([text],{type:type}),u=URL.createObjectURL(b);
+  var a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();
+  setTimeout(function(){URL.revokeObjectURL(u);a.remove();},400);
+}
+$('#btnJson').addEventListener('click',function(){
+  if(!sessions.length)return toast('Nothing to export yet');
+  download('bankroll-backup-'+todayStr()+'.json',JSON.stringify(sessions,null,2),'application/json');
+  toast('Backup downloaded');
+});
+$('#btnCsv').addEventListener('click',function(){
+  if(!sessions.length)return toast('Nothing to export yet');
+  var lines=['date,venue,min_buy_in,buy_ins,total_buy_in,pnl'];
+  sortAsc(sessions).forEach(function(s){
+    lines.push([s.date,'"'+s.venue.replace(/"/g,'""')+'"',s.minBuyIn,s.buyIns,totalBI(s),s.pnl].join(','));
+  });
+  download('bankroll-sessions-'+todayStr()+'.csv',lines.join('\n'),'text/csv');
+  toast('CSV downloaded');
+});
+$('#btnImport').addEventListener('click',function(){if(!authed)return openAuth();$('#fileImport').click();});
+$('#fileImport').addEventListener('change',function(e){
+  var f=e.target.files[0];e.target.value='';if(!f)return;
+  var r=new FileReader();
+  r.onload=function(){
+    try{
+      var arr=JSON.parse(r.result);
+      if(!Array.isArray(arr))throw 0;
+      var have={};sessions.forEach(function(s){have[s.id]=1;});
+      var added=0;
+      arr.forEach(function(raw){
+        var s=norm(raw);
+        if(s&&!have[s.id]){sessions.push(s);have[s.id]=1;added++;}
+      });
+      save();render();
+      toast(added?('Imported '+added+' session'+(added>1?'s':'')):'No new sessions found in file');
+    }catch(err){toast('Import failed — pick a valid bankroll JSON backup');}
+  };
+  r.readAsText(f);
+});
+
+/* ================= misc ================= */
+function toast(msg){
+  var t=$('#toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){t.classList.remove('show');},2200);
+}
+/* ================= cloud sync (Netlify Function + Blobs) ================= */
+var SYNC_URL='/.netlify/functions/sessions';
+var AUTH_URL='/.netlify/functions/auth';
+var KEY_LS='bankroll.key.v1';
+var cloudState=null; // null=unknown, true=reachable, false=recently-failed (self-heals after LATCH_MS)
+var latchAt=0, LATCH_MS=90000;
+var pushTimer=null,lastSyncNote='';
+var writeKey='';try{writeKey=localStorage.getItem(KEY_LS)||'';}catch(e){}
+var authed=true, gate=null; // optimistic edit-UI until the auth check resolves
+
+function setSync(state,note){
+  var d=$('#syncDot');if(!d)return;
+  d.className='sync-dot '+({synced:'synced',syncing:'syncing',error:'error',nosync:'nosync'}[state]||'local');
+  $('#syncTxt').textContent={synced:'synced',syncing:'syncing',error:'offline',nosync:'no sync'}[state]||'local';
+  lastSyncNote=note||lastSyncNote;
+  d.title=state==='synced'?('Synced across devices — '+lastSyncNote)
+       :state==='syncing'?'Syncing with cloud…'
+       :state==='nosync'?'Cloud sync is OFF — this deploy is missing its sync function. Redeploy the FULL folder (see README), then click here to retry.'
+       :state==='error'?('Connection issue — data safe locally; click to retry. '+lastSyncNote)
+       :'Local-only mode (no Netlify endpoint here). Click to retry.';
+}
+// retry path: fully reset and re-probe (drop-in after a fresh deploy)
+$('#syncDot').addEventListener('click',function(){cloudState=null;setSync('syncing');cloudPull(false);checkAuth();});
+
+function cloudHeaders(){var h={'content-type':'application/json'};if(writeKey)h['x-bankroll-key']=writeKey;return h;}
+
+/* ---------- view-only / owner-login mode ---------- */
+var authBd=$('#authBackdrop'),authForm=$('#authForm'),authErr=$('#authErr');
+function applyMode(){
+  document.body.classList.toggle('view-only',!authed);
+  var b=$('#btnAuth');
+  b.style.display=(gate===false)?'none':'';
+  $('#authTxt').textContent=authed?'Logout':'Login';
+  b.title=authed?'Log out (return to view-only)':'Log in to edit this ledger';
+}
+function setAuthed(ok,key,save){
+  authed=ok;
+  if(ok&&key!=null)writeKey=key;
+  if(!ok)writeKey='';
+  try{
+    if(ok&&key&&save)localStorage.setItem(KEY_LS,key);
+    if(!ok)localStorage.removeItem(KEY_LS);
+  }catch(e){}
+  applyMode();
+}
+function openAuth(){if(authed)return;authErr.hidden=true;$('#fAuth').value='';authBd.hidden=false;requestAnimationFrame(function(){authBd.classList.add('open');});setTimeout(function(){$('#fAuth').focus();},60);}
+function closeAuth(){authBd.classList.remove('open');setTimeout(function(){authBd.hidden=true;},180);}
+function checkAuth(){
+  if(cloudState===false){applyMode();return Promise.resolve();}
+  return fetch(AUTH_URL,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({key:writeKey})})
+  .then(function(r){return r.json().then(function(j){return{s:r.status,j:j};},function(){return{s:r.status,j:{}};});})
+  .then(function(res){
+    if(res.s===404){applyMode();return;}                                   // no functions here (local preview)
+    if(res.j&&res.j.gate===false){gate=false;authed=true;applyMode();return;}
+    if(res.s===200&&res.j&&res.j.ok){gate=true;authed=true;applyMode();return;}
+    if(res.s===401){gate=true;setAuthed(false);return;}                    // wrong/stored-key stale → view only
+    applyMode();
+  }).catch(function(){applyMode();});
+}
+$('#btnAuth').addEventListener('click',function(){
+  if(authed){setAuthed(false);toast('Logged out — view only');}
+  else openAuth();
+});
+$('#btnCloseAuth').addEventListener('click',closeAuth);
+authBd.addEventListener('mousedown',function(e){if(e.target===authBd)closeAuth();});
+authForm.addEventListener('submit',function(e){
+  e.preventDefault();
+  var key=$('#fAuth').value.trim();authErr.hidden=true;
+  if(!key){authErr.textContent='Enter the owner password.';authErr.hidden=false;return;}
+  fetch(AUTH_URL,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({key:key})})
+  .then(function(r){return r.json().then(function(j){return{s:r.status,j:j};},function(){return{s:r.status,j:{}};});})
+  .then(function(res){
+    if(res.j&&res.j.gate===false){gate=false;setAuthed(true,key);closeAuth();toast('No server password set — editing is open');}
+    else if(res.s===200&&res.j&&res.j.ok){gate=true;setAuthed(true,key,true);closeAuth();toast('Edit mode unlocked');}
+    else if(res.s===401){gate=true;applyMode();authErr.textContent='Wrong password — try again.';authErr.hidden=false;}
+    else{authErr.textContent='Unexpected response — try again.';authErr.hidden=false;}
+  }).catch(function(){authErr.textContent='Could not reach server — try again.';authErr.hidden=false;});
+});
+function adoptCloud(data,announce){
+  sessions=(data.sessions||[]).map(norm).filter(Boolean);
+  localUpdatedAt=+data.updatedAt||Date.now();
+  try{localStorage.setItem(TS_KEY,String(localUpdatedAt));}catch(e){}
+  saveLocal();render();
+  if(announce)toast('Updated from another device ☁');
+}
+function cloudPull(silent){
+  if(cloudState===false){
+    if(Date.now()-latchAt<LATCH_MS)return Promise.resolve(false);
+    cloudState=null; // probe again — a redeploy may have brought functions online
+  }
+  return fetch(SYNC_URL,{cache:'no-store'}).then(function(r){
+    if(r.status===404){cloudState=false;latchAt=Date.now();setSync(/\.netlify\.app$/.test(location.hostname)?'nosync':'local');return false;}
+    if(!r.ok)throw new Error('bad status');
+    return r.json();
+  }).then(function(data){
+    if(data===false||data==null)return false;
+    cloudState=true;
+    if(Array.isArray(data.sessions)&&(+data.updatedAt||0)>localUpdatedAt){
+      adoptCloud(data,true);
+    }else if(localUpdatedAt>(+data.updatedAt||0)){
+      schedulePush(); // local is newer (edited offline / first deploy) → push up
+    }
+    setSync('synced',new Date().toLocaleTimeString());
+    return true;
+  }).catch(function(){
+    if(cloudState===null){cloudState=false;setSync('local');}
+    else setSync('error','click the dot to retry');
+    return false;
+  });
+}
+function schedulePush(){
+  if(cloudState===false){
+    if(Date.now()-latchAt<LATCH_MS)return;
+    cloudState=null; // user edited after endpoint came online → retry
+  }
+  clearTimeout(pushTimer);
+  pushTimer=setTimeout(cloudPush,600);
+}
+function cloudPush(){
+  if(cloudState===false)return;
+  setSync('syncing');
+  fetch(SYNC_URL,{method:'PUT',headers:cloudHeaders(),keepalive:true,
+    body:JSON.stringify({updatedAt:localUpdatedAt,sessions:sessions})})
+  .then(function(r){
+    if(r.status===404){cloudState=false;latchAt=Date.now();setSync(/\.netlify\.app$/.test(location.hostname)?'nosync':'local');return null;}
+    if(r.status===401){gate=true;setAuthed(false);setSync('error','write blocked — log in');openAuth();toast('Write rejected — owner login required');return null;}
+    if(!r.ok)throw new Error('bad status');
+    return r.json();
+  }).then(function(res){
+    if(res==null)return;
+    cloudState=true;
+    if(res.conflict&&res.data&&(+res.data.updatedAt||0)>localUpdatedAt){
+      adoptCloud(res.data,true); // another device saved something newer
+    }
+    setSync('synced',new Date().toLocaleTimeString());
+  }).catch(function(){setSync('error','will retry on next change');});
+}
+// poll for changes made on other devices (cloudPull self-throttles while offline)
+setInterval(function(){if(!document.hidden)cloudPull(true);},30000);
+
+// re-render when clock rolls into a new day / when tab refocuses (auto month/year rollover)
+window.addEventListener('focus',function(){queueRender();if(cloudState!==false)cloudPull(true);});
+document.addEventListener('visibilitychange',function(){
+  if(!document.hidden){queueRender();if(cloudState!==false)cloudPull(true);}
+  else if(pushTimer){clearTimeout(pushTimer);pushTimer=null;cloudPush();} // flush pending save
+});
+// sync across open tabs of the same browser
+window.addEventListener('storage',function(e){
+  if(e.key===LS_KEY){sessions=loadSessions();localUpdatedAt=loadTS();queueRender();}
+});
+// keep charts crisp on resize
+if('ResizeObserver'in window){
+  var ro=new ResizeObserver(queueRender);
+  ro.observe(chartPnlEl);ro.observe(chartRoiEl);
+}else{
+  window.addEventListener('resize',queueRender);
+}
+
+render();
+applyMode();                             // edit UI until the auth check resolves
+cloudPull(true);                         // adopt cloud data on load if a Netlify endpoint exists
+setTimeout(function(){cloudPull(true);},8000);   // catch-up burst: another device may
+setTimeout(function(){cloudPull(true);},22000);  // be mid-push right now
+checkAuth();                             // discover gate state; downgrade to view-only if locked
+})();
+</script>
+</body>
+</html>

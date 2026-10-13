@@ -1,0 +1,10 @@
+{
+  "name": "bankroll",
+  "private": true,
+  "version": "2.0.0",
+  "description": "Poker PnL ledger with Netlify Blobs cross-device sync",
+  "type": "module",
+  "dependencies": {
+    "@netlify/blobs": "*"
+  }
+}

@@ -1,0 +1,9 @@
+# Netlify installs these at build time — never commit them
+node_modules/
+
+# Local Netlify CLI state
+.netlify/
+
+# OS cruft
+.DS_Store
+Thumbs.db

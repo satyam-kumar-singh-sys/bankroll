@@ -1,0 +1,9 @@
+[build]
+  # forces Netlify to run a build step (and npm install) instead of treating
+  # the upload as prebuilt static files — required for Functions to be bundled
+  command = "echo static-site"
+  publish = "."
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
