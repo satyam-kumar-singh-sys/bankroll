@@ -316,8 +316,13 @@ footer .sep{margin:0 9px;color:#2A3040}
         <div class="card kpi"><div class="k-label">Total buy-in</div><div class="k-value" id="kBuyIn">₹0</div><div class="k-sub" id="kBuyInSub">—</div></div>
         <div class="card kpi"><div class="k-label">Net PnL</div><div class="k-value neu" id="kPnl">₹0</div><div class="k-sub" id="kPnlSub">—</div></div>
         <div class="card kpi"><div class="k-label">Overall ROI</div><div class="k-value neu" id="kRoi">—</div><div class="k-sub" id="kRoiSub">—</div></div>
+        <div class="card kpi"><div class="k-label">Win rate</div><div class="k-value neu" id="kWin">—</div><div class="k-sub" id="kWinSub">—</div></div>
+        <div class="card kpi"><div class="k-label">Longest win streak</div><div class="k-value neu" id="kStreak">—</div><div class="k-sub" id="kStreakSub">—</div></div>
+        <div class="card kpi"><div class="k-label">Best session</div><div class="k-value neu" id="kBest">—</div><div class="k-sub" id="kBestSub">—</div></div>
+        <div class="card kpi"><div class="k-label">Max drawdown</div><div class="k-value neu" id="kDd">—</div><div class="k-sub" id="kDdSub">—</div></div>
       </div>
-      <div class="roi-note">ROI = net PnL ÷ total buy-in (min buy-in × buy-ins) × 100 · values in ₹</div>
+      <div class="roi-note">ROI = net PnL ÷ total buy-in (min buy-in × buy-ins) × 100 · values in ₹ · KPIs &amp; charts follow the venue filter</div>
+
 
       <div class="card table-card">
         <div class="tc-head">
@@ -512,18 +517,42 @@ function sortDesc(a){return a.slice().sort(function(x,y){
   return (y.createdAt||0)-(x.createdAt||0);});}
 function totalBI(s){return s.minBuyIn*s.buyIns;}
 
+function filteredScope(){
+  var l=scopeList(tab);
+  return venueFilter==='all'?l:l.filter(function(s){return s.venue===venueFilter;});
+}
+function analyticsOf(list){
+  var t=sortAsc(list),cum=0,peak=0,mdd=0,maxRun=0,maxWin=0,cnt=0,type='',best=null,worst=null;
+  t.forEach(function(s,i){
+    cum+=s.pnl;if(cum>peak)peak=cum;if(cum-peak<mdd)mdd=cum-peak;
+    if(s.pnl>0){cnt=type==='W'?cnt+1:1;type='W';if(cnt>maxWin)maxWin=cnt;}
+    else if(s.pnl<0){cnt=type==='L'?cnt+1:1;type='L';if(cnt>maxRun)maxRun=cnt;}
+    else{cnt=0;type='';}
+    if(best===null||s.pnl>best.pnl)best={pnl:s.pnl,buy:totalBI(s),idx:i+1};
+    if(worst===null||s.pnl<worst.pnl)worst={pnl:s.pnl,buy:totalBI(s),idx:i+1};
+  });
+  var curType='',curStreak=0;
+  for(var k=t.length-1;k>=0;k--){var p=t[k].pnl;
+    if(p>0){if(curType===''||curType==='W'){curType='W';curStreak++;}else break;}
+    else if(p<0){if(curType===''||curType==='L'){curType='L';curStreak++;}else break;}
+    else break;}
+  return {maxWin:maxWin,maxRun:maxRun,curType:curType,curStreak:curStreak,best:best,worst:worst,mdd:mdd};
+}
+
 function statsOf(list){
-  var n=list.length,buy=0,pnl=0,wins=0,roiSum=0,venues={},avg;
+  var n=list.length,buy=0,pnl=0,wins=0,zeros=0,roiSum=0,venues={},avg;
   list.forEach(function(s){
     var b=totalBI(s);buy+=b;pnl+=s.pnl;
     if(s.pnl>0)wins++;
+    else if(s.pnl===0)zeros++;
     if(b>0)roiSum+=s.pnl/b*100;
     venues[s.venue]=1;
   });
-  return {n:n,buy:buy,pnl:pnl,
+  return {n:n,buy:buy,pnl:pnl,wins:wins,zeros:zeros,
     roi:buy>0?pnl/buy*100:null,
     winRate:n?wins/n*100:null,
     avgBuy:n?buy/n:0,
+    avgPnl:n?pnl/n:0,
     avgRoi:n?roiSum/n:null,
     venues:Object.keys(venues).length};
 }
@@ -654,7 +683,7 @@ function tipRoi(p){
 var chartPnlEl=$('#chartPnl'),chartRoiEl=$('#chartRoi');
 
 function renderCharts(){
-  var list=scopeList(tab);
+  var list=filteredScope();
   var ser=seriesOf(list);
   var emptyMsg='No sessions logged for '+periodName(tab)+' yet — press N to add one.';
   var pnlPts=ser.map(function(p){return {date:p.date,venue:p.venue,pnl:p.pnl,cum:p.cum,value:p.cum};});
@@ -678,7 +707,8 @@ function renderCharts(){
 }
 
 function renderKpis(){
-  var st=statsOf(scopeList(tab));
+  var scope=filteredScope();
+  var st=statsOf(scope),an=analyticsOf(scope);
   $('#kGames').textContent=st.n;
   $('#kGamesSub').textContent=st.n?('across '+st.venues+' venue'+(st.venues>1?'s':'')):'no games logged';
   $('#kBuyIn').textContent='₹'+grp(st.buy);
@@ -686,12 +716,39 @@ function renderKpis(){
   var kP=$('#kPnl');
   kP.textContent=fmtMoney(st.pnl,st.pnl!==0);
   kP.className='k-value '+(st.pnl>0?'pos':st.pnl<0?'neg':'neu');
-  $('#kPnlSub').textContent=st.n&&st.winRate!=null?('win rate '+st.winRate.toFixed(0)+'%'):'—';
+  $('#kPnlSub').textContent=st.n?('avg '+fmtMoney(st.avgPnl,true)+' / session'):'—';
   var kR=$('#kRoi');
   if(st.roi==null){kR.textContent='—';kR.className='k-value neu';}
   else{kR.textContent=fmtPct(st.roi,1,true);kR.className='k-value '+(st.roi>0?'pos':st.roi<0?'neg':'neu');}
   $('#kRoiSub').textContent=st.n&&st.avgRoi!=null?('avg '+fmtPct(st.avgRoi,1,true)+' / session'):'—';
+  // form analytics (venue-filtered)
+  var kW=$('#kWin');
+  if(st.winRate==null){kW.textContent='—';kW.className='k-value neu';$('#kWinSub').textContent='—';}
+  else{
+    var losses=st.n-st.wins-st.zeros;
+    kW.textContent=st.winRate.toFixed(0)+'%';
+    kW.className='k-value '+(st.winRate>=50?'pos':'neg');
+    $('#kWinSub').textContent='W '+st.wins+' · L '+losses+(st.zeros?' · ±'+st.zeros:'');
+  }
+  $('#kStreak').textContent=an.maxWin?String(an.maxWin):'—';
+  $('#kStreakSub').textContent=st.n?('in a row · current '+(an.curType?an.curType+an.curStreak:'—')):'—';
+  var kB=$('#kBest');
+  if(an.best){
+    kB.textContent=fmtMoney(an.best.pnl,true);
+    kB.className='k-value '+(an.best.pnl>0?'pos':an.best.pnl<0?'neg':'neu');
+    $('#kBestSub').textContent='buy-in '+fmtMoney(an.best.buy)+' · session #'+an.best.idx+(an.worst?' · worst '+fmtMoney(an.worst.pnl,true):'');
+  }else{kB.textContent='—';kB.className='k-value neu';$('#kBestSub').textContent='—';}
+  var kD=$('#kDd');
+  if(an.mdd<0){
+    kD.textContent=fmtMoney(an.mdd,true);kD.className='k-value neg';
+    $('#kDdSub').textContent='longest losing streak: '+an.maxRun;
+  }else{
+    kD.textContent='—';kD.className='k-value neu';
+    $('#kDdSub').textContent=st.n?'no drawdown yet':'—';
+  }
 }
+
+
 
 function renderChips(){
   var wrap=$('#chips');
@@ -863,7 +920,7 @@ $('#tbody').addEventListener('click',function(e){
 });
 $('#chips').addEventListener('click',function(e){
   var c=e.target.closest('.chip');if(!c)return;
-  venueFilter=c.dataset.v;renderChips();renderTable();
+  venueFilter=c.dataset.v;render();
 });
 
 /* ================= tabs / keys ================= */
@@ -1101,5 +1158,5 @@ setTimeout(function(){cloudPull(true);},22000);  // be mid-push right now
 checkAuth();                             // discover gate state; downgrade to view-only if locked
 })();
 </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4a30125d86790f3',t:'MTc5MTk0MzM3Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
