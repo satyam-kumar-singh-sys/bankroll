@@ -16,7 +16,7 @@ Splitwise was my de-facto poker database for two years — expenses named `Poker
 
 **📊 Analytics**
 - Cumulative PnL and cumulative ROI area charts — custom-built SVG charts with hover crosshairs, gradient fills and nice-tick axes (no chart library)
-- KPI cards: total games, total buy-in, net PnL, overall ROI + derived stats (win rate, per-session averages)
+- KPI cards: total games, total buy-in, net PnL, overall ROI, plus **form analytics** — win rate (W/L), longest win streak with current streak, best/worst session, and max drawdown (peak-to-trough of the cumulative curve) — all re-scoped live by the venue chips
 - Three auto-scoping tabs — **Lifetime**, **current year**, **current month** — that reset themselves when the calendar rolls over, computed from the clock on every render
 
 **🃏 Tracking**
