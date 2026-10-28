@@ -599,6 +599,8 @@ function norm(s){
   var v=String(s.venue==null?'':s.venue).trim().slice(0,48);
   // venue merge (2026-10-22): every "Paawan wing" 3-1 / hybrid / Saturday-settle spelling now lives under ONE table
   if(/paawan/i.test(v)&&/hybrid|3-1|3-2|saturday/i.test(v))v='Paawan wing';
+  // venue rename (2026-10-28): align with Juari Adda table names
+  if(/^paawan wing$/i.test(v))v='Paawan wing table';
   // venue rename (2026-10-22): summer suffix dropped — "V425 table (summer term)" → "V425 table"
   if(/^v425 table/i.test(v)&&/summer/i.test(v))v='V425 table';
   if(!v)return null;

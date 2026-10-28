@@ -555,6 +555,161 @@ function secSelectHtml(opts){return `<div class="secsel"><label>Section</label>
   </select></div>`}
 function wireSecSel(){const el=dash.querySelector('#secsel');if(el)el.onchange=()=>{curSec=el.value;renderDash()}}
 function renderDash(){if(curName===SATYAM)renderSatyam();else renderPlayer();}
+
+/* ============================================================
+   JUARI ADDA · cloud additions + Satyam live-sync + owner upload
+   ============================================================ */
+const RB_KEY_LS='bankroll.key.v1';
+const RB_API='/.netlify/functions/railbook';
+function rbKey(){try{return localStorage.getItem(RB_KEY_LS)||''}catch(e){return ''}}
+const _owned=new Map(); // name → owed to keep across syncs
+
+function recompute(name){
+  const d=DATA[name];if(!d)return;
+  const e=d.e||[];let net=0,vol=0;const g={};
+  e.forEach(x=>{const v=+x[3]||0;net+=v;vol+=Math.abs(v);if(x[2])g[x[2]]=1;});
+  d.n=e.length;d.net=Math.round(net*100)/100;d.vol=Math.round(vol*100)/100;d.g=Object.keys(g).sort();
+}
+function entryKey(name,x){return [name,x[0],x[1],x[2],+x[3],x[4]||''].join('|')}
+function applyAdditions(add){
+  if(!add)return 0;
+  if(!_owned.size)Object.keys(DATA).forEach(n=>_owned.set(n,DATA[n].owed||0));
+  let cnt=0;
+  Object.keys(add).forEach(name=>{
+    const list=add[name];if(!list||!list.length)return;
+    if(!DATA[name])DATA[name]={n:0,net:0,vol:0,owed:_owned.get(name)||0,g:[],e:[]};
+    const seen=new Set(DATA[name].e.map(x=>entryKey(name,x)));
+    list.forEach(x=>{const k=entryKey(name,x);if(!seen.has(k)){DATA[name].e.push(x);seen.add(k);cnt++;}});
+    recompute(name);
+  });
+  return cnt;
+}
+function tableName(v){v=String(v||'').trim();if(!v)return'';return /table$/i.test(v)?v:v+' table';}
+/* live mirror of the owner's personal bankroll → Satyam Singh tile */
+function syncSatyam(){
+  return fetch('/.netlify/functions/sessions',{cache:'no-store'})
+   .then(r=>r.ok?r.json():null).then(j=>{
+     if(!j||!Array.isArray(j.sessions)||!j.sessions.length)return;
+     if(!_owned.size)Object.keys(DATA).forEach(n=>_owned.set(n,DATA[n].owed||0));
+     const e=j.sessions.map(s=>[s.date,'',tableName(s.venue),+s.pnl||0])
+                    .filter(x=>x[2]&&/^\d{4}-\d{2}-\d{2}$/.test(x[0]));
+     DATA[SATYAM]={n:0,net:0,vol:0,owed:_owned.get(SATYAM)||0,g:[],e:e};
+     recompute(SATYAM);
+   }).catch(()=>{});
+}
+function pullAdditions(){
+  return fetch(RB_API,{cache:'no-store'})
+   .then(r=>r.ok?r.json():null).then(j=>{
+     if(j&&j.additions){const n=applyAdditions(j.additions);if(n)toast&&toast(n+' cloud entr'+(n===1?'y':'ies')+' merged');}
+   }).catch(()=>{});
+}
+/* ---------- CSV/JSON → additions object ---------- */
+function parseUpload(text,ext){
+  const add={};
+  if(ext==='json'||/^\s*[\[{]/.test(text)){
+    const j=JSON.parse(text);
+    const src=j.additions&&typeof j.additions==='object'?j.additions:j;
+    Object.keys(src).forEach(name=>{
+      const list=src[name];if(!Array.isArray(list))return;
+      list.forEach(x=>{
+        if(!Array.isArray(x)||x.length<4)return;
+        const e=[String(x[0]),String(x[1]||''),tableName(String(x[2]||'')),+x[3],x[4]===undefined?undefined:String(x[4])];
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(e[0])||!e[2]||!isFinite(e[3]))return;
+        (add[name]=add[name]||[]).push(e.filter(v=>v!==undefined));
+      });
+    });
+    return add;
+  }
+  const lines=text.replace(/\r/g,'').split('\n').map(l=>l.trim()).filter(Boolean);
+  if(!lines.length)return add;
+  let hdr=null;
+  const first=lines[0].toLowerCase();
+  if(!/^\d{4}-\d{2}-\d{2}/.test(first)){hdr=first.split(',').map(c=>c.trim());lines.shift();}
+  const col=(...names)=>hdr?hdr.findIndex(h=>names.includes(h)):-1;
+  let di=col('date'),pi=col('player','name'),ti=col('table','venue'),ni=col('net','pnl','amount'),
+      mi=col('memo','what','note'),si=col('section');
+  if(di<0)di=0;if(pi<0)pi=1;if(ti<0)ti=2;if(ni<0)ni=3;
+  let bad=0;
+  lines.forEach(l=>{
+    const c=l.split(',').map(x=>x.trim());
+    const name=c[pi],date=c[di],tbl=tableName(c[ti]||''),net=+c[ni];
+    if(!name||!/^\d{4}-\d{2}-\d{2}$/.test(date)||!tbl||!isFinite(net)){bad++;return;}
+    const e=[date,mi>=0?(c[mi]||''):'',tbl,net];
+    if(si>=0&&c[si])e.push(c[si]);
+    (add[name]=add[name]||[]).push(e);
+  });
+  if(bad)toast&&toast(bad+' row'+(bad===1?'':'s')+' skipped (bad date/net)');
+  return add;
+}
+/* ---------- owner upload modal ---------- */
+function openUpload(){
+  const ov=document.createElement('div');
+  ov.id='rbUp';ov.style.cssText='position:fixed;inset:0;z-index:95;background:rgba(4,5,8,.72);backdrop-filter:blur(6px);display:grid;place-items:center';
+  ov.innerHTML=`<div style="width:min(460px,92vw);background:linear-gradient(170deg,var(--panel-2,#10141c),var(--panel));border:1px solid var(--border);border-radius:14px;padding:22px;box-shadow:0 24px 60px rgba(0,0,0,.55)">
+    <div style="font:700 11px var(--mono);letter-spacing:.28em;color:var(--accent-2);margin-bottom:8px">OWNER · ADD ENTRIES</div>
+    <div style="font:13px/1.5 var(--sans);color:var(--mut,#8b93a5);margin-bottom:14px">
+      Upload a <b style="color:var(--text)">.csv</b> or <b style="color:var(--text)">.json</b> with new player-log rows.
+      <br>CSV columns: <code style="font:11px var(--mono);color:var(--accent-2)">date, player, table, net, memo?, section?</code>
+      <br>JSON shape: <code style="font:11px var(--mono);color:var(--text)">{"Name":[["2026-11-02","","Paawan wing table",-500],…]}</code>
+      <br>Dates must be <b>YYYY-MM-DD</b>. Entries merge — re-uploads dedupe automatically.</div>
+    <div id="rbPrev" style="display:none;font:12px var(--mono);color:var(--faint);margin-bottom:12px"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <label class="back" style="cursor:pointer;padding:9px 16px">CHOOSE FILE<input type="file" id="rbFile" accept=".csv,.json,application/json" hidden></label>
+      <button class="back" id="rbGo" disabled style="opacity:.4">UPLOAD</button></div></div>`;
+  document.body.appendChild(ov);
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove()});
+  const fi=ov.querySelector('#rbFile'),go=ov.querySelector('#rbGo'),pv=ov.querySelector('#rbPrev');
+  let pending=null;
+  fi.addEventListener('change',()=>{
+    const f=fi.files[0];if(!f)return;
+    f.text().then(t=>{
+      try{pending=parseUpload(t,f.name.toLowerCase().endsWith('.json')?'json':'csv');
+        const ns=Object.keys(pending).filter(n=>pending[n].length);
+        const cnt=ns.reduce((s,n)=>s+pending[n].length,0);
+        if(!cnt){pv.style.display='block';pv.textContent='Nothing valid found — check format.';go.disabled=true;go.style.opacity=.4;pending=null;return;}
+        pv.style.display='block';
+        pv.textContent='READY · '+ns.length+' player'+(ns.length===1?'':'s')+' · '+cnt+' entr'+(cnt===1?'y':'ies');
+        go.disabled=false;go.style.opacity=1;
+      }catch(e){pv.style.display='block';pv.textContent='Parse failed: file is not readable csv/json.';pending=null;}
+    });
+  });
+  go.addEventListener('click',()=>{
+    if(!pending)return;
+    go.textContent='UR…';go.disabled=true;
+    /* merge with what's already in the cloud so nothing is clobbered */
+    fetch(RB_API,{cache:'no-store'}).then(r=>r.ok?r.json():{additions:{}}).then(cur=>{
+      const merged={};
+      const put=(src)=>{Object.keys(src||{}).forEach(n=>{
+        const seen=new Set((merged[n]||[]).map(x=>entryKey(n,x)));
+        (src[n]||[]).forEach(x=>{const k=entryKey(n,x);if(!seen.has(k)){seen.add(k);(merged[n]=merged[n]||[]).push(x);}});
+      });};
+      put(cur&&cur.additions);put(pending);
+      return fetch(RB_API,{method:'PUT',headers:{'content-type':'application/json','x-bankroll-key':rbKey()},body:JSON.stringify({additions:merged})});
+    }).then(r=>{if(!r.ok)throw new Error(r.status===401?'wrong key':'bad reply');return r.json();})
+     .then(j=>{ov.remove();
+        applyAdditions(pending);
+        entries=entriesView();renderTop();renderGrid();if(curName)renderDash();
+        toast('+ '+j.count+' stored · juari adda updated ✓');})
+     .catch(e=>{go.textContent='UPLOAD';go.disabled=false;toast('Upload failed — '+e.message);});
+  });
+}
+/* owner check → reveal the upload control */
+(function(){
+  const k=rbKey();if(!k)return;
+  fetch('/.netlify/functions/auth',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({key:k})})
+   .then(r=>{
+     if(!r.ok)return;
+     const top=document.querySelector('.topbar');if(!top||document.getElementById('rbAdd'))return;
+     const b=document.createElement('button');b.id='rbAdd';b.className='back';
+     b.textContent='+ ENTRIES';b.style.marginLeft='auto';
+     top.appendChild(b);b.onclick=openUpload;
+   }).catch(()=>{});
+})();
+/* boot: pull cloud truth, then repaint */
+Promise.all([pullAdditions(),syncSatyam()]).then(()=>{
+  entries=entriesView();renderTop();renderGrid();if(curName)renderDash();
+});
+
 </script>
 </body>
 </html>

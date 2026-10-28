@@ -140,7 +140,8 @@ function norm(o){
   if(!isFinite(m)||!isFinite(b)||!isFinite(p))return null;
   let v=String(o.venue==null?"":o.venue).trim().slice(0,48);
   // shared venue merges — must match index.html norm()
-  if(/paawan/i.test(v)&&/hybrid|3-1|3-2|saturday/i.test(v))v="Paawan wing";
+  if(/paawan/i.test(v)&&/hybrid|3-1|3-2|saturday/i.test(v))v="Paawan wing table";
+  if(/^paawan wing$/i.test(v))v="Paawan wing table";
   if(/^v425 table/i.test(v)&&/summer/i.test(v))v="V425 table";
   if(!v)return null;
   const s={id:(typeof o.id==="string"&&o.id)?o.id:uid(),date:d,minBuyIn:m,buyIns:b,pnl:p,venue:v,createdAt:+o.createdAt||Date.now()};
