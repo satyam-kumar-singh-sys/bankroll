@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Ledger — Poker PnL Tracker</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f3efe6;--card:#fbf8f1;--ink:#1c2420;--mut:#6b7268;--line:#ddd6c5;--win:#1f7a4d;--loss:#b3402f;--brass:#9a7421;--felt:#17382b;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1512;--card:#15201b;--ink:#ece6d6;--mut:#8f9a90;--line:#26342c;--win:#4fc486;--loss:#ef7a62;--brass:#d4a94a;--felt:#0b2a1f;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0e1512;--card:#15201b;--ink:#ece6d6;--mut:#8f9a90;--line:#26342c;--win:#4fc486;--loss:#ef7a62;--brass:#d4a94a;--felt:#0b2a1f;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 "IBM Plex Mono",ui-monospace,Menlo,monospace}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 60px}
+header{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;justify-content:space-between;border-bottom:2px solid var(--ink);padding-bottom:14px}
+h1{font:700 clamp(30px,6vw,48px)/1 Fraunces,Georgia,serif;margin:0;letter-spacing:-.02em}
+h1 span{color:var(--brass);font-style:italic}
+.sub{color:var(--mut);font-size:12px;margin-top:6px;text-transform:uppercase;letter-spacing:.12em}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+button,.btn{font:inherit;font-size:13px;background:var(--card);color:var(--ink);border:1px solid var(--ink);padding:8px 12px;cursor:pointer;border-radius:2px}
+button:hover{background:var(--ink);color:var(--bg)}
+button.primary{background:var(--felt);color:#f3efe6;border-color:var(--felt)}
+button.primary:hover{background:var(--brass);border-color:var(--brass)}
+.tabs{display:flex;gap:0;margin:22px 0 18px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tab{background:none;border:0;border-bottom:3px solid transparent;border-radius:0;padding:10px 18px;font:500 17px Fraunces,Georgia,serif;color:var(--mut);white-space:nowrap}
+.tab:hover{background:none;color:var(--ink)}
+.tab.on{color:var(--ink);border-bottom-color:var(--brass)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.kpi{background:var(--card);border:1px solid var(--line);padding:12px 14px}
+.kpi.hero{background:var(--felt);color:#f3efe6;border-color:var(--felt)}
+.kpi label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--mut)}
+.kpi.hero label{color:#b9c7bd}
+.kpi b{display:block;font:700 26px Fraunces,Georgia,serif;margin-top:4px;font-variant-numeric:tabular-nums}
+.kpi small{color:var(--mut);font-size:11px}
+.kpi.hero small{color:#b9c7bd}
+.pos{color:var(--win)}.neg{color:var(--loss)}
+.hero .pos{color:#7ee0a8}.hero .neg{color:#ff9d88}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,480px),1fr));gap:12px;margin-top:12px}
+.card{background:var(--card);border:1px solid var(--line);padding:14px;min-width:0}
+h2{font:500 18px Fraunces,Georgia,serif;margin:0 0 8px}
+.chart svg{width:100%;height:auto;display:block}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);text-align:right;padding:6px 8px;border-bottom:1px solid var(--ink);white-space:nowrap}
+td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+td.l{text-align:left}
+.secs{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 14px}
+.sec{display:flex;flex-direction:column;align-items:flex-start;min-width:96px;padding:8px 14px;font:500 16px Fraunces,Georgia,serif}
+.sec small{font:400 11px "IBM Plex Mono",monospace;opacity:.85}
+.sec.on{background:var(--felt);color:#f3efe6;border-color:var(--felt)}
+.sec.on small .pos,.sec.on small .neg{color:inherit}
+.trow{display:flex;justify-content:space-between;gap:10px;width:100%;text-align:left;border:0;border-top:1px solid var(--line);background:none;padding:11px 4px;border-radius:0}
+.trow:hover{background:var(--bg);color:var(--ink)}.trow.on{font-weight:500}
+.sub2{padding:0 0 10px 18px}.mini{margin:8px 0 4px;font-size:12px;padding:5px 10px}
+.scope{font-size:12px;color:var(--mut);margin-bottom:10px;text-transform:uppercase;letter-spacing:.1em}.scope b{color:var(--ink)}
+body:not(.admin) .adm{display:none!important}
+.empty{color:var(--mut);padding:30px;text-align:center}
+.x{background:none;border:0;color:var(--mut);padding:0 4px}
+.x.ed:hover{color:var(--brass)}.x:hover{background:none;color:var(--loss)}
+dialog{background:var(--card);color:var(--ink);border:2px solid var(--ink);padding:20px;max-width:380px;width:calc(100% - 32px)}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+dialog label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);margin-top:12px}
+dialog input{width:100%;font:inherit;padding:8px;background:var(--bg);color:var(--ink);border:1px solid var(--line);margin-top:4px}
+.row{display:flex;gap:10px}.row>*{flex:1}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;font-size:13px;opacity:0;transition:.25s;pointer-events:none}
+#toast.show{opacity:1}
+.chart-wrap{position:relative}
+.chart-tip{position:absolute;pointer-events:none;z-index:5;min-width:150px;background:var(--card);border:1px solid var(--ink);padding:8px 10px;font-size:12px;box-shadow:2px 2px 0 rgba(0,0,0,.08)}
+.chart-tip .tt-date{color:var(--mut);font-size:11px}
+.chart-tip .tt-venue{color:var(--brass);font-size:11px;margin:1px 0 5px;word-break:break-word}
+.chart-tip .tt-row{display:flex;justify-content:space-between;gap:14px;color:var(--mut);padding:1px 0}
+.chart-tip .tt-row b{color:var(--ink)}
+.chart-tip .tt-row b.pos{color:var(--win)} .chart-tip .tt-row b.neg{color:var(--loss)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div><h1>The <span>Ledger</span></h1><div class="sub">Poker sessions · PnL · ROI</div></div>
+  <div class="actions">
+    <button class="primary adm" id="add">+ Add log</button>
+    <button id="imp" class="adm">Import</button>
+    <button id="expj">Export JSON</button>
+    <button id="expc">Export CSV</button>
+    <button id="theme" title="Toggle theme">◐</button>
+    <button id="login">Login</button><button id="logout" hidden>Logout</button>
+    <input type="file" id="file" accept=".csv,.json" hidden>
+  </div>
+</header>
+<nav class="tabs" id="tabs"></nav>
+<main id="main"></main>
+</div>
+
+<dialog id="dlg">
+<form method="dialog" id="frm">
+  <h2 id="dlgT">New log</h2>
+  <label>Section<input id="f_sec" list="secs" required placeholder="e.g. 3-1 · type a new one to create it"></label><datalist id="secs"></datalist>
+  <label>Table name<input id="f_venue" list="venues" required placeholder="e.g. R370 juniors table"></label><datalist id="venues"></datalist>
+  <label>Date<input type="date" id="f_date" required></label>
+  <div class="row"><label>Min buy-in (₹)<input type="number" id="f_min" min="1" step="any" required value="100"></label>
+  <label>Buy-ins<input type="number" id="f_bi" min="1" step="1" required value="1"></label></div>
+  <label>PnL in ₹ (negative for a loss)<input type="number" id="f_pnl" step="any" required></label>
+  <div class="row" style="margin-top:18px"><button type="button" id="cancel">Cancel</button><button class="primary" value="ok">Save</button></div>
+</form>
+</dialog>
+<dialog id="ldlg"><form id="lfrm"><h2>Admin login</h2>
+  <label>Password<input type="password" id="l_pw" autocomplete="current-password" required></label>
+  <div id="lerr" style="color:var(--loss);font-size:12px;min-height:16px;margin-top:8px"></div>
+  <div class="row" style="margin-top:10px"><button type="button" id="lcancel">Cancel</button><button class="primary">Log in</button></div></form></dialog>
+<dialog id="dup"><h2>Duplicates found</h2><p id="dupTxt" style="font-size:13px"></p>
+  <div style="display:grid;gap:8px;margin-top:14px"><button id="dSkip" class="primary">Skip duplicates</button><button id="dAll">Add duplicates too</button><button id="dCancel">Cancel import</button></div></dialog>
+<div id="toast"></div>
+
+<script>
+const CUR="₹"; // change currency symbol here
+const KEY_LS="bankroll.key.v1";
+const AUTH_URL="/.netlify/functions/auth",SESS_URL="/.netlify/functions/sessions";
+const LS="bankroll.sessions.v1",TSL="bankroll.updatedAt.v1";
+let writeKey="";try{writeKey=localStorage.getItem(KEY_LS)||""}catch(e){}
+let openMode=false,localUpdatedAt=0;
+const canWrite=()=>!!writeKey||openMode;
+const ORDER=["2-1","2-2","3-1","3-2","summer","online"];
+const SECTION_LABELS={summer:"Summer Term",online:"Online"};
+const secLabel2=k=>SECTION_LABELS[k]||k;
+const WINDOWS=[["2024-08-01","2024-12-18","2-1"],["2025-01-06","2025-05-20","2-2"],["2025-08-01","2025-12-18","3-1"],["2026-01-06","2026-05-20","3-2"],["2026-05-21","2026-07-18","summer"]];
+function sectionOf(d){d=String(d||"");for(const w of WINDOWS)if(d>=w[0]&&d<=w[1])return w[2];return"online"}
+function canonSection(x){const t=String(x==null?"":x).trim().slice(0,24);if(!t)return"";const low=t.toLowerCase();
+  for(const id of ORDER){if(low===id||low===secLabel2(id).toLowerCase())return id}return t}
+function sessionSection(s){return (s&&s.section)?s.section:sectionOf(s?s.date:"")}
+function uid(){return Math.random().toString(36).slice(2,10)+Date.now().toString(36)}
+function norm(o){
+  if(!o||typeof o!=="object")return null;
+  const d=String(o.date||"");if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return null;
+  const m=+o.minBuyIn,b=+o.buyIns,p=+o.pnl;
+  if(!isFinite(m)||!isFinite(b)||!isFinite(p))return null;
+  let v=String(o.venue==null?"":o.venue).trim().slice(0,48);
+  // shared venue merges — must match index.html norm()
+  if(/paawan/i.test(v)&&/hybrid|3-1|3-2|saturday/i.test(v))v="Paawan wing";
+  if(/^v425 table/i.test(v)&&/summer/i.test(v))v="V425 table";
+  if(!v)return null;
+  const s={id:(typeof o.id==="string"&&o.id)?o.id:uid(),date:d,minBuyIn:m,buyIns:b,pnl:p,venue:v,createdAt:+o.createdAt||Date.now()};
+  // never materialize a section into storage when absent — the date rule stays the live default (matches the dashboards)
+  const __sc=canonSection(o.section);if(__sc)s.section=__sc;
+  return s;
+}
+function secList(a){const seen=new Set(a.map(sessionSection)),k=[];ORDER.forEach(x=>{if(seen.has(x)){k.push(x);seen.delete(x)}});return k.concat([...seen].sort())}
+
+
+let S=[]; let tab="lifetime",secSel=null,tblSel=null,secDirty=false;
+const $=s=>document.querySelector(s);
+const sig=s=>[s.date,s.venue,s.minBuyIn,s.buyIns,s.pnl].join("|");
+const hdr=()=>writeKey?{"x-bankroll-key":writeKey}:{};
+function setAuth(){const on=canWrite();document.body.classList.toggle("admin",on);$("#login").hidden=on;$("#logout").hidden=!on}
+function dropKey(){writeKey="";try{localStorage.removeItem(KEY_LS)}catch(e){}setAuth()}
+function saveLocal(){try{localStorage.setItem(LS,JSON.stringify(S));localStorage.setItem(TSL,String(localUpdatedAt))}catch(e){}}
+async function load(){
+  try{const r=localStorage.getItem(LS);localUpdatedAt=+localStorage.getItem(TSL)||0;
+    if(r)S=(JSON.parse(r)||[]).map(norm).filter(Boolean)}catch(e){}
+  render();
+  try{const r=await fetch(SESS_URL,{cache:"no-store"});if(!r.ok)throw 0;
+    const j=await r.json(),cu=+j.updatedAt||0;
+    if(cu>localUpdatedAt){localUpdatedAt=cu;S=(j.sessions||[]).map(norm).filter(Boolean);saveLocal();render()}
+    else if(localUpdatedAt>cu&&canWrite())save();
+  }catch(e){if(!S.length)toast("Couldn't load data from the server")}}
+let chain=Promise.resolve();
+function save(){localUpdatedAt=Date.now();saveLocal();if(!canWrite())return Promise.resolve();chain=chain.then(doSave);return chain}
+async function doSave(){try{
+  const r=await fetch(SESS_URL,{method:"PUT",headers:{"Content-Type":"application/json",...hdr()},body:JSON.stringify({updatedAt:localUpdatedAt,sessions:S})});
+  if(r.status===401){dropKey();toast("Key rejected — please log in again");return}
+  if(!r.ok)throw 0}catch(e){toast("Offline — changes are saved locally and will sync on next open")}}
+const now=new Date(), YR=String(now.getFullYear()), MO=YR+"-"+String(now.getMonth()+1).padStart(2,"0");
+const MN=now.toLocaleString("en",{month:"long"});
+const fmt=(n,d=0)=>(n<0?"-":"")+CUR+Math.abs(n).toLocaleString("en-IN",{minimumFractionDigits:d,maximumFractionDigits:d});
+const sgn=n=>(n>0?"+":"")+fmt(n,Math.abs(n)%1?2:0);
+const pc=n=>(n>0?"+":"")+n.toFixed(1)+"%";
+const cls=n=>n>0?"pos":n<0?"neg":"";
+const sorted=a=>a.map((s,i)=>({...s,_i:i,_s:s._s||s})).sort((x,y)=>x.date<y.date?-1:x.date>y.date?1:x._i-y._i);
+const cost=s=>s.minBuyIn*s.buyIns;
+
+function stats(a){
+  const L=sorted(a),n=L.length;
+  let net=0,inv=0,w=0,peak=0,dd=0,run=0,bw=0,bl=0,cw=0,cl=0,gw=0,gl=0,cum=[],roi=[];
+  L.forEach(s=>{net+=s.pnl;inv+=cost(s);if(s.pnl>0){w++;gw+=s.pnl;cw++;cl=0}else{cl=s.pnl<0?cl+1:0;cw=0;if(s.pnl<0)gl+=-s.pnl}
+    bw=Math.max(bw,cw);bl=Math.max(bl,cl);peak=Math.max(peak,net);dd=Math.max(dd,peak-net);
+    cum.push(net);roi.push(inv?net/inv*100:0)});
+  const best=n?L.reduce((b,s)=>s.pnl>b.pnl?s:b):null, worst=n?L.reduce((b,s)=>s.pnl<b.pnl?s:b):null;
+  return{L,n,net,inv,w,wr:n?w/n*100:0,roi:inv?net/inv*100:0,bw,bl,dd,best,worst,avg:n?net/n:0,avgBI:n?inv/n:0,
+    pf:gl?gw/gl:(gw?Infinity:0),cum,roiS:roi,buyins:L.reduce((t,s)=>t+s.buyIns,0)};
+}
+function pick(){return tab==="lifetime"?S:tab==="year"?S.filter(s=>s.date.startsWith(YR)):S.filter(s=>s.date.startsWith(MO))}
+
+let CID=0;
+function lineChart(vals,labels,{pct=false}={}){
+  if(!vals.length)return'<div class="empty">No data</div>';
+  const W=560,H=240,p={l:56,r:12,t:12,b:24};
+  const pts=[0,...vals]; let mn=Math.min(...pts),mx=Math.max(...pts); if(mn===mx){mn-=1;mx+=1}
+  const x=i=>p.l+(pts.length<2?0:i/(pts.length-1)*(W-p.l-p.r)), y=v=>p.t+(mx-v)/(mx-mn)*(H-p.t-p.b);
+  const d=pts.map((v,i)=>(i?"L":"M")+x(i).toFixed(1)+","+y(v).toFixed(1)).join("");
+  const z=y(0),id="c"+(++CID);
+  let g="";for(let k=0;k<=4;k++){const v=mn+(mx-mn)*k/4;g+=`<line x1="${p.l}" x2="${W-p.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${p.l-6}" y="${y(v)+4}" text-anchor="end" font-size="10" fill="var(--mut)">${pct?v.toFixed(0)+"%":compact(v)}</text>`}
+  const dots=vals.length<=80?(vals.map((v,i)=>`<circle class="dot" data-i="${i}" cx="${x(i+1)}" cy="${y(v)}" r="2.5" fill="${v>=0?"var(--win)":"var(--loss)"}"/>`).join("")
+    +`<rect class="tov" x="${p.l}" y="${p.t}" width="${W-p.l-p.r}" height="${H-p.t-p.b}" fill="transparent"/>`)
+    :vals.map((v,i)=>`<circle cx="${x(i+1)}" cy="${y(v)}" r="2.5" fill="${v>=0?"var(--win)":"var(--loss)"}"><title>${labels[i]}: ${pct?pc(v):sgn(v)}</title></circle>`).join("");
+  return`<svg viewBox="0 0 ${W} ${H}">${g}<line x1="${p.l}" x2="${W-p.r}" y1="${y(0)}" y2="${y(0)}" stroke="var(--ink)" stroke-dasharray="4 3"/><defs><clipPath id="${id}a"><rect x="0" y="0" width="${W}" height="${z}"/></clipPath><clipPath id="${id}b"><rect x="0" y="${z}" width="${W}" height="${H}"/></clipPath></defs><path d="${d}L${x(pts.length-1)},${z}L${x(0)},${z}Z" fill="var(--win)" opacity=".18" clip-path="url(#${id}a)"/><path d="${d}L${x(pts.length-1)},${z}L${x(0)},${z}Z" fill="var(--loss)" opacity=".18" clip-path="url(#${id}b)"/><path d="${d}" fill="none" stroke="var(--win)" stroke-width="2" clip-path="url(#${id}a)"/><path d="${d}" fill="none" stroke="var(--loss)" stroke-width="2" clip-path="url(#${id}b)"/>${dots}<text x="${p.l}" y="${H-6}" font-size="10" fill="var(--mut)">${labels[0]}</text><text x="${W-p.r}" y="${H-6}" text-anchor="end" font-size="10" fill="var(--mut)">${labels[labels.length-1]}</text></svg>`;
+}
+function compact(v){const a=Math.abs(v);return(v<0?"-":"")+CUR+(a>=1000?(a/1000).toFixed(a>=10000?0:1)+"k":Math.round(a))}
+function barChart(vals,labels){
+  if(!vals.length)return'<div class="empty">No data</div>';
+  const W=560,H=240,p={l:56,r:12,t:12,b:24};
+  const mx=Math.max(...vals,0),mn=Math.min(...vals,0),r=(mx-mn)||1;
+  const y=v=>p.t+(mx-v)/r*(H-p.t-p.b),bw=(W-p.l-p.r)/vals.length;
+  const bars=vals.map((v,i)=>`<rect x="${p.l+i*bw+bw*.12}" width="${Math.max(bw*.76,1)}" y="${Math.min(y(v),y(0))}" height="${Math.max(Math.abs(y(v)-y(0)),1)}" fill="${v>=0?"var(--win)":"var(--loss)"}"><title>${labels[i]}: ${sgn(v)}</title></rect>`).join("");
+  let g="";for(let k=0;k<=4;k++){const v=mn+r*k/4;g+=`<line x1="${p.l}" x2="${W-p.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${p.l-6}" y="${y(v)+4}" text-anchor="end" font-size="10" fill="var(--mut)">${compact(v)}</text>`}
+  return`<svg viewBox="0 0 ${W} ${H}">${g}${bars}<line x1="${p.l}" x2="${W-p.r}" y1="${y(0)}" y2="${y(0)}" stroke="var(--ink)"/><text x="${p.l}" y="${H-6}" font-size="10" fill="var(--mut)">${labels[0]}</text><text x="${W-p.r}" y="${H-6}" text-anchor="end" font-size="10" fill="var(--mut)">${labels[labels.length-1]}</text></svg>`;
+}
+const kpi=(l,v,sub="",c="",hero=false)=>`<div class="kpi${hero?" hero":""}"><label>${l}</label><b class="${c}">${v}</b><small>${sub||"&nbsp;"}</small></div>`;
+
+function byTable(a){
+  const m={};a.forEach(s=>{(m[s.venue]??=[]).push(s)});
+  return Object.entries(m).map(([v,x])=>({v,...stats(x)})).sort((a,b)=>b.n-a.n);
+}
+function render(){
+  const tl={lifetime:"Lifetime",year:YR,month:MN+" "+YR};
+  $("#tabs").innerHTML=Object.entries(tl).map(([k,t])=>`<button class="tab${k===tab?" on":""}" data-t="${k}">${t}</button>`).join("");
+  document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{tab=b.dataset.t;render()});
+  $("#venues").innerHTML=[...new Set(S.map(s=>s.venue))].map(v=>`<option value="${esc(v)}">`).join("");
+  $("#secs").innerHTML=secList(S).map(v=>`<option value="${esc(v)}">`).join("");
+  const a=pick(),st=stats(a);
+  if(!st.n){$("#main").innerHTML=`<div class="card empty">No sessions in this period yet.<div style="margin-top:14px"><button class="primary adm" id="heroAdd">${S.length?"+ Add log":"Log your first session"}</button></div></div>`;const hb=$("#heroAdd");if(hb)hb.onclick=()=>openDlg();return}
+  $("#main").innerHTML='<div id="top"></div><div id="log"></div>';
+  sync(st);
+}
+function sync(st){renderLog(st);renderTop(st)}
+function renderTop(base){
+  let a=base.L; if(secSel&&secSel!=="__all")a=a.filter(s=>sessionSection(s)===secSel); if(tblSel)a=a.filter(s=>s.venue===tblSel);
+  const st=stats(a),lab=st.L.map(s=>s.date);
+  const scope=[(!secSel||secSel==="__all")?"All sections":secLabel2(secSel),tblSel].filter(Boolean).join(" › ");
+  $("#top").innerHTML=`<div class="scope">Showing: <b>${esc(scope)}</b></div>
+  <div class="grid2" style="margin-top:0">
+    <div class="card chart" data-kind="pnl"><h2>Cumulative PnL</h2><div class="chart-wrap">${lineChart(st.cum,lab)}</div></div>
+    <div class="card chart" data-kind="roi"><h2>Cumulative ROI</h2><div class="chart-wrap">${lineChart(st.roiS,lab,{pct:true})}</div></div>
+  </div>
+  <div class="kpis" style="margin-top:12px">
+    ${kpi("Total games",st.n,st.buyins+" buy-ins")}
+    ${kpi("Net PnL",sgn(st.net),`${st.n} sessions`,cls(st.net),true)}
+    ${kpi("Overall ROI",pc(st.roi),"net ÷ total buy-in",cls(st.roi),true)}
+    ${kpi("Total buy-in",fmt(st.inv),"avg "+fmt(st.avgBI)+" / session")}
+    ${kpi("Win rate",st.wr.toFixed(1)+"%",st.w+"W · "+(st.n-st.w)+"L/B")}
+    ${kpi("Longest win streak",st.bw,"sessions in a row")}
+    ${kpi("Longest losing streak",st.bl,"sessions in a row")}
+    ${kpi("Max drawdown",st.dd?"-"+fmt(st.dd):fmt(0),"peak-to-trough","neg")}
+    ${kpi("Best session",sgn(st.best.pnl),st.best.date+" · "+st.best.venue,"pos")}
+    ${kpi("Worst session",sgn(st.worst.pnl),st.worst.date+" · "+st.worst.venue,"neg")}
+    ${kpi("Avg PnL / session",sgn(st.avg),"",cls(st.avg))}
+    ${kpi("Profit factor",st.pf===Infinity?"∞":st.pf.toFixed(2),"gross wins ÷ gross losses")}
+  </div>`;
+  bindChartTips(st);
+}
+
+function chartTipHTML(kind,s,cumv){
+  const head=`<div class="tt-date">${s.date}</div><div class="tt-venue">#${esc(s.venue)}</div>`;
+  if(kind==="roi"){const sr=cost(s)?s.pnl/cost(s)*100:0;
+    return head+`<div class="tt-row">Session ROI <b class="${cls(sr)}">${pc(sr)}</b></div><div class="tt-row">Cum. ROI <b class="${cls(cumv)}">${pc(cumv)}</b></div>`}
+  return head+`<div class="tt-row">Session <b class="${cls(s.pnl)}">${sgn(s.pnl)}</b></div><div class="tt-row">Cumulative <b class="${cls(cumv)}">${sgn(cumv)}</b></div>`;
+}
+function bindChartTips(st){
+  const L=st.L,n=L.length;if(!n)return;
+  document.querySelectorAll(".card.chart").forEach(card=>{
+    const wrap=card.querySelector(".chart-wrap");if(!wrap)return;
+    const svg=wrap.querySelector("svg"),ov=wrap.querySelector(".tov");
+    if(!svg||!ov)return;
+    const kind=card.dataset.kind,vals=kind==="roi"?st.roiS:st.cum;
+    const IW=560-56-12,WI=560,HI=240,PL=56,PT=12,PB=24;
+    const tip=document.createElement("div");tip.className="chart-tip";tip.style.display="none";wrap.appendChild(tip);
+    const pts=[0,...vals];let mn=Math.min(...pts),mx=Math.max(...pts);if(mn===mx){mn-=1;mx+=1}
+    let last=-1;
+    const clearDots=()=>wrap.querySelectorAll(".dot").forEach(d=>d.setAttribute("r","2.5"));
+    ov.addEventListener("mousemove",e=>{
+      const r=svg.getBoundingClientRect(),rw=wrap.getBoundingClientRect();
+      if(!r.width)return;
+      const scale=r.width/WI;
+      const mxv=(e.clientX-r.left)/scale;
+      let i=n<2?0:Math.round((mxv-PL)/(IW/n))-1;
+      i=Math.max(0,Math.min(n-1,i));
+      if(i!==last){clearDots();const dd=wrap.querySelector('.dot[data-i="'+i+'"]');if(dd)dd.setAttribute("r","4.5");
+        tip.innerHTML=chartTipHTML(kind,L[i],vals[i]);last=i;}
+      tip.style.display="block";
+      const px=(PL+((i+1)/n)*IW)*scale+(r.left-rw.left);
+      const py=(PT+(mx-vals[i])/(mx-mn)*(HI-PT-PB))*scale+(r.top-rw.top);
+      const tw=tip.offsetWidth||150,th=tip.offsetHeight||70,WW=rw.width,WH=rw.height;
+      let tx=px+18,ty=py-12-th;
+      if(tx+tw>WW-4)tx=px-18-tw;
+      if(ty<4)ty=py+22;
+      tip.style.left=Math.max(4,Math.min(tx,Math.max(4,WW-tw-4)))+"px";
+      tip.style.top=Math.max(4,Math.min(ty,Math.max(4,WH-th-4)))+"px";
+    });
+    ov.addEventListener("mouseleave",()=>{tip.style.display="none";clearDots();last=-1;});
+  });
+}
+
+function renderLog(st){
+  const ALL="__all",secs=secList(st.L); if(secSel!==ALL&&!secs.includes(secSel)){secSel=ALL;tblSel=null}
+  const all=secSel===ALL,pool=all?st.L:st.L.filter(s=>sessionSection(s)===secSel),tbs=byTable(pool); if(!tbs.find(t=>t.v===tblSel))tblSel=null;
+  const chip=(k,lab,L)=>{const x=stats(L);return`<button class="sec${k===secSel?" on":""}" data-s="${esc(k)}">${esc(lab)}<small>${x.n} games · <span class="${cls(x.net)}">${sgn(x.net)}</span></small></button>`};
+  $("#log").innerHTML=`<div class="card" style="margin-top:12px"><h2>Session log</h2>
+  <div class="secs">${chip(ALL,"All",st.L)}${secs.map(c=>chip(c,secLabel2(c),st.L.filter(s=>sessionSection(s)===c))).join("")}</div>
+  ${tbs.map(t=>{const o=t.v===tblSel;return`<div><button class="trow${o?" on":""}" data-t="${esc(t.v)}"><span>${o?"▾":"▸"} ${esc(t.v)}</span><span>${t.n} games · <b class="${cls(t.net)}">${sgn(t.net)}</b> · ${pc(t.roi)}</span></button>${o?`<div class="sub2 scroll"><table><tr><th>Date</th>${all?"<th>Section</th>":""}<th>Buy-ins</th><th>Invested</th><th>PnL</th><th>ROI</th><th></th></tr>${[...t.L].reverse().map(s=>{const i=S.indexOf(s._s);return`<tr><td>${s.date}</td>${all?`<td>${esc(secLabel2(sessionSection(s)))}</td>`:""}<td>${s.buyIns} × ${s.minBuyIn}</td><td>${fmt(cost(s))}</td><td class="${cls(s.pnl)}">${sgn(s.pnl)}</td><td class="${cls(s.pnl)}">${pc(s.pnl/cost(s)*100)}</td><td><button class="x ed adm" data-e="${i}" title="Edit">✎</button><button class="x del adm" data-d="${i}" title="Delete">✕</button></td></tr>`}).join("")}</table><button class="mini adm">+ Add log to this table</button></div>`:""}</div>`}).join("")}</div>`;
+  document.querySelectorAll(".sec").forEach(b=>b.onclick=()=>{secSel=b.dataset.s;tblSel=null;sync(st)});
+  document.querySelectorAll(".trow").forEach(b=>b.onclick=()=>{tblSel=b.dataset.t===tblSel?null:b.dataset.t;sync(st)});
+  document.querySelectorAll(".mini").forEach(b=>b.onclick=()=>openDlg(all?null:secSel,tblSel));
+  document.querySelectorAll(".ed").forEach(b=>b.onclick=()=>openDlg(null,null,+b.dataset.e));
+  document.querySelectorAll(".del").forEach(b=>b.onclick=()=>{const s=S[+b.dataset.d];if(confirm(`Delete ${s.date} · ${s.venue} (${sgn(s.pnl)})?`)){S.splice(+b.dataset.d,1);save();render()}});
+}
+function esc(t){return String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2600)}
+
+/* add */
+let editIdx=null;
+function openDlg(sec,ven,idx){editIdx=idx??null;const e=editIdx!=null?S[editIdx]:null,d=e?e.date:now.toISOString().slice(0,10);
+  $("#dlgT").textContent=e?"Edit log":"New log";$("#f_date").value=d;secDirty=!!(sec||e);
+  $("#f_sec").value=e?secLabel2(sessionSection(e)):(sec?secLabel2(sec):secLabel2(sectionOf(d)));$("#f_venue").value=e?e.venue:(ven||"");
+  if(e){$("#f_min").value=e.minBuyIn;$("#f_bi").value=e.buyIns}
+  $("#f_pnl").value=e?e.pnl:"";$("#dlg").showModal()}
+$("#add").onclick=()=>openDlg();
+$("#f_sec").oninput=()=>secDirty=true;
+$("#f_date").onchange=()=>{if(!secDirty)$("#f_sec").value=secLabel2(sectionOf($("#f_date").value))};
+$("#cancel").onclick=()=>$("#dlg").close();
+const canon=(v,list)=>list.find(x=>x.toLowerCase()===v.toLowerCase())||v;
+$("#frm").onsubmit=e=>{e.preventDefault();if(e.submitter&&e.submitter.value!=="ok")return $("#dlg").close();
+  const date=$("#f_date").value,min=+$("#f_min").value,bi=+$("#f_bi").value,pnl=+$("#f_pnl").value;
+  const ven=canon($("#f_venue").value.trim(),[...new Set(S.map(s=>s.venue))]);
+  const sk=canonSection($("#f_sec").value); // blank = follow the date rule, same as the dashboards
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return toast("Pick a valid date for the session.");
+  if(!ven)return toast("Which table was this?");
+  if(!isFinite(min)||min<=0)return toast("Min buy-in must be above zero.");
+  if(!isFinite(bi)||bi<1||Math.floor(bi)!==bi)return toast("Buy-ins must be a whole number of 1 or more.");
+  if(!isFinite(pnl))return toast("Enter the PnL — positive or negative.");
+  const o={date,venue:ven,minBuyIn:min,buyIns:bi,pnl};if(sk)o.section=sk;
+  const ed=editIdx!=null;
+  if(ed){o.id=S[editIdx].id;o.createdAt=S[editIdx].createdAt;Object.assign(S[editIdx],o);if(!sk)delete S[editIdx].section}
+  else{o.id=uid();o.createdAt=Date.now();S.push(o)}
+  const nav=sk||sectionOf(date);
+  if(secSel!=="__all")secSel=nav;tblSel=ven;save();render();$("#dlg").close();
+  toast((ed?"Log updated: ":"Log added to ")+secLabel2(nav)+" › "+ven)};
+
+/* export */
+function dl(name,txt,type){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([txt],{type}));a.download=name;document.body.appendChild(a);a.click();a.remove()}
+const stamp=()=>new Date().toISOString().slice(0,10);
+$("#expj").onclick=()=>dl(`bankroll-backup-${stamp()}.json`,JSON.stringify(S,null,2),"application/json");
+$("#expc").onclick=()=>dl(`bankroll-sessions-${stamp()}.csv`,"date,venue,min_buy_in,buy_ins,total_buy_in,pnl,section\n"+sorted(S).map(s=>[s.date,'"'+s.venue.replace(/"/g,'""')+'"',s.minBuyIn,s.buyIns,cost(s),s.pnl,'"'+secLabel2(sessionSection(s))+'"'].join(",")).join("\n"),"text/csv");
+
+/* import: JSON (backup) or CSV; merges, skips exact duplicates */
+function parseCSV(t){const rows=[];let r=[],c="",q=false;for(let i=0;i<t.length;i++){const ch=t[i];
+  if(q){if(ch=='"'&&t[i+1]=='"'){c+='"';i++}else if(ch=='"')q=false;else c+=ch}
+  else if(ch=='"')q=true;else if(ch==","){r.push(c);c=""}else if(ch=="\n"||ch=="\r"){if(ch=="\r"&&t[i+1]=="\n")i++;r.push(c);c="";if(r.some(x=>x!==""))rows.push(r);r=[]}else c+=ch}
+  if(c||r.length){r.push(c);rows.push(r)}return rows}
+$("#imp").onclick=()=>$("#file").click();
+let pend=null;
+$("#file").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(!f||!canWrite())return;
+  try{const t=await f.text();let inc=[];
+    if(f.name.toLowerCase().endsWith(".json")){inc=JSON.parse(t).map(norm).filter(Boolean)}
+    else{const[hd,...rows]=parseCSV(t);const ix=n=>hd.map(x=>x.trim().toLowerCase()).indexOf(n);
+      inc=rows.map(r=>({date:r[ix("date")],venue:r[ix("venue")],minBuyIn:r[ix("min_buy_in")],buyIns:r[ix("buy_ins")],pnl:r[ix("pnl")],section:ix("section")>=0?r[ix("section")]:""})).map(norm).filter(Boolean)}
+    if(!inc.length){toast("No valid session logs found in that file");return}
+    const have={};S.forEach(s=>have[sig(s)]=(have[sig(s)]||0)+1);const fresh=[],dups=[];
+    inc.forEach(s=>{const k=sig(s);if(have[k]>0){have[k]--;dups.push(s)}else fresh.push(s)});
+    if(dups.length){pend={fresh,dups};
+      $("#dupTxt").innerHTML=`<b>${dups.length}</b> of <b>${inc.length}</b> logs in this file already exist (same date, table, min buy-in, buy-ins and PnL). ${fresh.length} ${fresh.length===1?"is":"are"} new.`;
+      $("#dSkip").textContent=`Skip duplicates (add ${fresh.length} new)`;$("#dSkip").disabled=!fresh.length;$("#dup").showModal()}
+    else addImported(fresh,0)
+  }catch(err){toast("Import failed: unreadable file")}};
+function addImported(a,skipped){const ids={};S.forEach(s=>ids[s.id]=1);a.forEach(s=>{if(ids[s.id])s.id=uid();ids[s.id]=1});S.push(...a);save();render();toast(`Imported ${a.length} log${a.length===1?"":"s"}${skipped?` · ${skipped} duplicate${skipped===1?"":"s"} skipped`:""}`)}
+$("#dSkip").onclick=()=>{$("#dup").close();addImported(pend.fresh,pend.dups.length)};
+$("#dAll").onclick=()=>{$("#dup").close();addImported([...pend.fresh,...pend.dups],0)};
+$("#dCancel").onclick=()=>{$("#dup").close();toast("Import cancelled")};
+
+/* auth */
+$("#login").onclick=()=>{$("#l_pw").value="";$("#lerr").textContent="";$("#ldlg").showModal()};
+$("#lcancel").onclick=()=>$("#ldlg").close();
+$("#lfrm").onsubmit=async e=>{e.preventDefault();$("#lerr").textContent="";
+  try{const r=await fetch(AUTH_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:$("#l_pw").value})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.ok){$("#lerr").textContent="Incorrect password.";return}
+    const wasPw=$("#l_pw").value;
+    if(j.gate===false)openMode=true;else{writeKey=wasPw;try{localStorage.setItem(KEY_LS,writeKey)}catch(_){}}
+    $("#ldlg").close();setAuth();await load();toast("Logged in")
+  }catch(_){$("#lerr").textContent="Couldn't reach the server."}};
+$("#logout").onclick=()=>{dropKey();toast("Logged out")};
+
+$("#theme").onclick=()=>{const r=document.documentElement,d=r.dataset.theme==="dark"||(!r.dataset.theme&&matchMedia("(prefers-color-scheme:dark)").matches);r.dataset.theme=d?"light":"dark";try{localStorage.setItem("ledger-theme",r.dataset.theme)}catch(e){}};
+try{const _th=localStorage.getItem("ledger-theme");if(_th)document.documentElement.dataset.theme=_th}catch(e){}
+setAuth();
+(async()=>{try{
+  const r=await fetch(AUTH_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:writeKey})});
+  const j=await r.json().catch(()=>({}));
+  if(j&&j.gate===false)openMode=true;else if(!(r.ok&&j.ok))writeKey="";
+}catch(e){}
+  setAuth();load()})();
+
+/* ---- live sync with the cloud while this tab stays open (matches the dashboards) ---- */
+function quietPull(){fetch(SESS_URL,{cache:"no-store"}).then(r=>r.ok?r.json():0).then(j=>{
+  if(!j)return;const cu=+j.updatedAt||0;
+  if(cu>localUpdatedAt){localUpdatedAt=cu;S=(j.sessions||[]).map(norm).filter(Boolean);saveLocal();render()}
+}).catch(()=>{})}
+setInterval(()=>{if(!document.hidden)quietPull()},30000);
+window.addEventListener("focus",quietPull);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)quietPull()});
+
+/* ---- hidden gateway: type "ledger" or tap the brand 5× to return ---- */
+function back(){const a=document.getElementById("dashGate");try{a.href=sessionStorage.getItem("ledger.from")||"index.html"}catch(e){}a.click()}
+let _seq="";
+document.addEventListener("keydown",e=>{
+  if(/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement&&document.activeElement.tagName||"")||e.metaKey||e.ctrlKey||e.altKey)return;
+  _seq=(_seq+e.key.toLowerCase()).slice(-6);
+  if(_seq==="ledger"){_seq="";back()}
+  setTimeout(()=>_seq="",4000)});
+let _taps=[];const _brand=document.querySelector("h1 span");
+if(_brand)_brand.addEventListener("click",()=>{const t=Date.now();_taps.push(t);
+  _taps=_taps.filter(x=>t-x<1600);
+  if(_taps.length>=3){_taps=[];back()}});
+</script>
+<a id="dashGate" href="index.html" hidden rel="noopener"></a>
+</body>
+</html>
