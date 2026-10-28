@@ -47,7 +47,7 @@ font-family:var(--mono);font-size:12.5px;padding:9px 12px 9px 34px;outline:none;
 .overline{font-family:var(--mono);font-size:11.5px;letter-spacing:.3em;text-transform:uppercase;color:var(--accent-2);display:flex;align-items:center;gap:12px;margin-bottom:26px}
 .overline::after{content:"";height:1px;width:64px;background:linear-gradient(90deg,var(--accent),transparent)}
 .hero h1{font-weight:800;font-size:clamp(46px,8.6vw,118px);line-height:.98;letter-spacing:-.045em}
-.hero h1 .row{display:block;overflow:hidden}
+.hero h1 .row{display:block;overflow:hidden;padding-bottom:.12em;margin-bottom:-.12em}
 .hero h1 .row span{display:inline-block;transform:translateY(110%);animation:rise 1s cubic-bezier(.2,.7,.2,1) forwards}
 .hero h1 .row:nth-child(2) span{animation-delay:.12s;color:var(--muted)}
 .hero h1 .row:nth-child(3) span{animation-delay:.24s}
@@ -194,7 +194,7 @@ footer{border-top:1px solid var(--border);padding:26px 28px;display:flex;justify
 <header class="hero">
   <div class="overline">the poker gang · since 2024</div>
   <h1>
-    <span class="row"><span>Pick a rail.</span></span>
+    <span class="row"><span>Pick a player.</span></span>
     <span class="row"><span>Open their</span></span>
     <span class="row"><span><i style="font-style:normal" class="acc">ledger.</i> ↘</span></span>
   </h1>
